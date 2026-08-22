@@ -1,0 +1,31 @@
+Please convert the following resume template to match the exact same professional style as my Aurora template.
+
+### 1. Background & Colors
+- Force pure white background (`bg-white`)
+- Main text color: pure black (`text-black`)
+- Secondary text: `text-black/70`, `text-black/75`, `text-black/80`
+- Muted text: `text-black/60` or `text-black/65`
+- Borders: use black with low opacity (`border-black/10`, `border-black/15`)
+- Keep `text-primary` and `bg-primary` **only** for icons, dots, small accents, and highlights
+
+### 2. Font Sizes (make them larger and highly readable)
+- Name: 46px – 54px
+- Job Title: 17px
+- Section Headings: 14px (bold + uppercase)
+- Position / Role titles: 15px – 16px
+- Body text / descriptions: 13.5px – 14px
+- Achievements: 13.5px
+- Skills: 13.5px
+- Contact information: 12.5px
+- Dates and small labels: 11.5px – 12px
+
+### 3. Font Family
+- Use the default clean system / Tailwind font stack
+- Keep typography professional, modern, and highly readable
+
+### 4. A4 PDF Page Size (Very Important)
+- The root element must be a real A4 page
+- Use these exact constants:
+  ```ts
+  const A4_WIDTH_MM = 210;
+  const A4_HEIGHT_MM = 297;
