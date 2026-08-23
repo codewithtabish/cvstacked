@@ -8,7 +8,7 @@ import LiveFormBuilder from "./formbuilder/liveform-builder";
 import HeroToggle from "./heros/hero-toggle";
 import { PricingSection } from "./pricing-section";
 import Stats from "./stats/stats";
-import TemplatesShowcase from "./templateshowcase/template-showcase";
+// import TemplatesShowcase from "./templateshowcase/template-showcase";
 import TestimonialsSection from "./testmonials/testmonial-section";
 import HowItWorks from "./working/how-it-work";
 
@@ -18,7 +18,7 @@ export function LandingPage() {
       <main>
         <HeroToggle resume={seniorSoftwareEngineerResume} />
         <HowItWorks />
-        <TemplatesShowcase />
+        {/* <TemplatesShowcase /> */}
         <AICapabilities resume={seniorSoftwareEngineerResume} />
         <LiveFormBuilder resume={seniorSoftwareEngineerResume} />
         <BeforeAfter />
