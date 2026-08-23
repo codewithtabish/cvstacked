@@ -1,5 +1,3 @@
-"use client";
-
 import AllTemplateShow from "@/components/(app)/pages/templatespage/all-template-show";
 import TemplatesHeader from "@/components/(app)/pages/templatespage/template-header";
 import { Metadata } from "next";
