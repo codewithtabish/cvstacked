@@ -1,7 +1,14 @@
 // resume.ts
-
 export type ResumeTemplate =
-  "modern" | "professional" | "minimal" | "creative" | "executive";
+  | "modern"
+  | "professional"
+  | "minimal"
+  | "creative"
+  | "executive"
+  | "classic"
+  | "elegant"
+  | "technical"
+  | "compact";
 
 export type ResumeSectionType =
   | "personal"
@@ -81,9 +88,6 @@ export interface ResumeProject {
 }
 
 export interface ResumeCertification {
-  title: string;
-  organization: string;
-  date: string | undefined;
   id: string;
   name: string;
   issuer: string;
@@ -94,17 +98,12 @@ export interface ResumeCertification {
 }
 
 export interface ResumeLanguage {
-  language: string;
-  level: string;
   id: string;
   name: string;
-  proficiency:
-    "elementary" | "conversational" | "professional" | "fluent" | "native";
+  proficiency: "elementary" | "conversational" | "professional" | "fluent" | "native";
 }
 
 export interface ResumeAward {
-  name: string;
-  organization: string;
   id: string;
   title: string;
   issuer: string;
@@ -122,15 +121,14 @@ export interface ResumePublication {
 }
 
 export interface ResumeVolunteer {
-  position: string;
-  achievements: any;
   id: string;
   organization: string;
   role: string;
   startDate: string;
   endDate?: string;
   current?: boolean;
-  description: string;
+  description?: string;
+  achievements?: string[];
 }
 
 export interface ResumeReference {
@@ -159,8 +157,20 @@ export interface ResumeCustomSection {
 export interface ResumeData {
   id: string;
   title: string;
-  template: ResumeTemplate;
-  accentColor: string;
+
+  // ============================================================
+  // USER-CUSTOMIZABLE RESUME APPEARANCE
+  // ============================================================
+
+  templateId: ResumeTemplate;
+  themeId: string;
+  fontFamilyId: string;
+  typographyScale: string;
+
+  // ============================================================
+  // RESUME CONTENT
+  // ============================================================
+
   personal: ResumePersonalInfo;
   summary: string;
   experience: ResumeExperience[];
@@ -178,14 +188,27 @@ export interface ResumeData {
 }
 
 /* ============================================================
+   DEFAULT RESUME DESIGN SETTINGS
+   ============================================================ */
+
+const DEFAULT_RESUME_SETTINGS = {
+  themeId: "blue",
+  fontFamilyId: "inter",
+  typographyScale: "comfortable",
+} as const;
+
+/* ============================================================
    RESUME 01 — SENIOR SOFTWARE ENGINEER
    ============================================================ */
 
 export const seniorSoftwareEngineerResume: ResumeData = {
   id: "resume-software-engineer-001",
   title: "Senior Software Engineer Resume",
-  template: "modern",
-  accentColor: "#2563EB",
+
+  templateId: "modern",
+  themeId: DEFAULT_RESUME_SETTINGS.themeId,
+  fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
+  typographyScale: DEFAULT_RESUME_SETTINGS.typographyScale,
 
   personal: {
     firstName: "Alexander",
@@ -339,14 +362,7 @@ export const seniorSoftwareEngineerResume: ResumeData = {
       role: "Lead Engineer",
       description:
         "Real-time analytics platform enabling enterprise teams to monitor product usage, revenue metrics, and operational performance from a unified dashboard.",
-      technologies: [
-        "Next.js",
-        "TypeScript",
-        "Node.js",
-        "PostgreSQL",
-        "Redis",
-        "AWS",
-      ],
+      technologies: ["Next.js", "TypeScript", "Node.js", "PostgreSQL", "Redis", "AWS"],
       startDate: "2023",
       endDate: "2024",
       url: "https://example.com/atlas",
@@ -470,8 +486,11 @@ export const seniorSoftwareEngineerResume: ResumeData = {
 export const medicalDoctorResume: ResumeData = {
   id: "resume-doctor-001",
   title: "Medical Doctor Resume",
-  template: "professional",
-  accentColor: "#0F766E",
+
+  templateId: "professional",
+  themeId: DEFAULT_RESUME_SETTINGS.themeId,
+  fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
+  typographyScale: DEFAULT_RESUME_SETTINGS.typographyScale,
 
   personal: {
     firstName: "Sophia",
@@ -637,8 +656,7 @@ export const medicalDoctorResume: ResumeData = {
       title: "Outstanding Resident Award",
       issuer: "St. Mary's Hospital",
       date: "2021",
-      description:
-        "Recognized for clinical excellence, teamwork, and commitment to patient care.",
+      description: "Recognized for clinical excellence, teamwork, and commitment to patient care.",
     },
   ],
 
@@ -675,12 +693,7 @@ export const medicalDoctorResume: ResumeData = {
     },
   ],
 
-  interests: [
-    "Global Health",
-    "Medical Education",
-    "Running",
-    "Classical Music",
-  ],
+  interests: ["Global Health", "Medical Education", "Running", "Classical Music"],
 
   customSections: [],
 };
@@ -692,8 +705,11 @@ export const medicalDoctorResume: ResumeData = {
 export const civilEngineerResume: ResumeData = {
   id: "resume-engineer-001",
   title: "Civil Engineer Resume",
-  template: "executive",
-  accentColor: "#B45309",
+
+  templateId: "executive",
+  themeId: DEFAULT_RESUME_SETTINGS.themeId,
+  fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
+  typographyScale: DEFAULT_RESUME_SETTINGS.typographyScale,
 
   personal: {
     firstName: "Daniel",
@@ -859,8 +875,7 @@ export const civilEngineerResume: ResumeData = {
       title: "Project Excellence Award",
       issuer: "AEC Infrastructure Group",
       date: "2024",
-      description:
-        "Recognized for outstanding technical leadership and project execution.",
+      description: "Recognized for outstanding technical leadership and project execution.",
     },
   ],
 
@@ -898,8 +913,11 @@ export const civilEngineerResume: ResumeData = {
 export const productDesignerResume: ResumeData = {
   id: "resume-designer-001",
   title: "Senior Product Designer Resume",
-  template: "creative",
-  accentColor: "#7C3AED",
+
+  templateId: "creative",
+  themeId: DEFAULT_RESUME_SETTINGS.themeId,
+  fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
+  typographyScale: DEFAULT_RESUME_SETTINGS.typographyScale,
 
   personal: {
     firstName: "Emma",
@@ -1050,8 +1068,7 @@ export const productDesignerResume: ResumeData = {
       title: "Awwwards Honorable Mention",
       issuer: "Awwwards",
       date: "2024",
-      description:
-        "Recognized for excellence in digital product experience and interface design.",
+      description: "Recognized for excellence in digital product experience and interface design.",
     },
   ],
 
@@ -1071,13 +1088,7 @@ export const productDesignerResume: ResumeData = {
 
   references: [],
 
-  interests: [
-    "Typography",
-    "Photography",
-    "Architecture",
-    "Travel",
-    "Creative Technology",
-  ],
+  interests: ["Typography", "Photography", "Architecture", "Travel", "Creative Technology"],
 
   customSections: [],
 };
@@ -1089,8 +1100,11 @@ export const productDesignerResume: ResumeData = {
 export const marketingManagerResume: ResumeData = {
   id: "resume-marketing-001",
   title: "Marketing Manager Resume",
-  template: "minimal",
-  accentColor: "#DB2777",
+
+  templateId: "minimal",
+  themeId: DEFAULT_RESUME_SETTINGS.themeId,
+  fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
+  typographyScale: DEFAULT_RESUME_SETTINGS.typographyScale,
 
   personal: {
     firstName: "Olivia",
@@ -1201,13 +1215,7 @@ export const marketingManagerResume: ResumeData = {
       role: "Marketing Lead",
       description:
         "Developed and executed an integrated global marketing campaign for a new SaaS product launch.",
-      technologies: [
-        "HubSpot",
-        "Google Analytics",
-        "Google Ads",
-        "SEO",
-        "Content Marketing",
-      ],
+      technologies: ["HubSpot", "Google Analytics", "Google Ads", "SEO", "Content Marketing"],
       startDate: "2024",
       achievements: [
         "Generated more than 12,000 qualified leads.",
@@ -1270,13 +1278,7 @@ export const marketingManagerResume: ResumeData = {
 
   references: [],
 
-  interests: [
-    "Brand Strategy",
-    "Travel",
-    "Writing",
-    "Behavioral Psychology",
-    "Photography",
-  ],
+  interests: ["Brand Strategy", "Travel", "Writing", "Behavioral Psychology", "Photography"],
 
   customSections: [],
 };
@@ -1300,8 +1302,11 @@ export const demoResumes: ResumeData[] = [
 export const emptyResume: ResumeData = {
   id: "new-resume",
   title: "My Resume",
-  template: "modern",
-  accentColor: "#2563EB",
+
+  templateId: "modern",
+  themeId: "blue",
+  fontFamilyId: "inter",
+  typographyScale: "comfortable",
 
   personal: {
     firstName: "",

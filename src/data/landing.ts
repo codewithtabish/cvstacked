@@ -2,8 +2,8 @@
 
 export const navigationItems = [
   { title: "Product", href: "#features" },
-  { title: "AI Resume", href: "#ai-tailoring" },
-  { title: "Templates", href: "#templates" },
+  { title: "AI Resume", href: "/ai-resume-optimizer" },
+  { title: "Templates", href: "/templates" },
   { title: "Cover Letters", href: "#cover-letters" },
   { title: "Pricing", href: "#pricing" },
 ];
@@ -82,14 +82,12 @@ export const coverLetterTemplates = [
 export const features = [
   {
     title: "AI Resume Builder",
-    description:
-      "Build a polished master resume with guided sections and professional templates.",
+    description: "Build a polished master resume with guided sections and professional templates.",
     icon: "FileText",
   },
   {
     title: "AI Job Tailoring",
-    description:
-      "Paste any job description and let AI adapt your resume to match the role.",
+    description: "Paste any job description and let AI adapt your resume to match the role.",
     icon: "Sparkles",
   },
   {
@@ -106,26 +104,22 @@ export const features = [
   },
   {
     title: "AI Cover Letters",
-    description:
-      "Generate a tailored cover letter that tells the same story as your resume.",
+    description: "Generate a tailored cover letter that tells the same story as your resume.",
     icon: "Mail",
   },
   {
     title: "Application Tracker",
-    description:
-      "Track every application from saved to offer in one clean workspace.",
+    description: "Track every application from saved to offer in one clean workspace.",
     icon: "Kanban",
   },
   {
     title: "Resume Import",
-    description:
-      "Upload PDF or DOCX and turn it into an editable, polished resume in seconds.",
+    description: "Upload PDF or DOCX and turn it into an editable, polished resume in seconds.",
     icon: "Upload",
   },
   {
     title: "Multiple Versions",
-    description:
-      "Keep one master resume and create job-specific versions without starting over.",
+    description: "Keep one master resume and create job-specific versions without starting over.",
     icon: "Copy",
   },
   {
@@ -139,14 +133,12 @@ export const workflowSteps = [
   {
     number: "01",
     title: "Build your master resume",
-    description:
-      "Choose a template and fill in experience, education, skills, and achievements.",
+    description: "Choose a template and fill in experience, education, skills, and achievements.",
   },
   {
     number: "02",
     title: "Paste the job description",
-    description:
-      "Drop in the role you’re targeting so AI can understand what matters.",
+    description: "Drop in the role you’re targeting so AI can understand what matters.",
   },
   {
     number: "03",
@@ -157,8 +149,7 @@ export const workflowSteps = [
   {
     number: "04",
     title: "AI tailors your resume",
-    description:
-      "Suggestions appear for stronger bullets, missing keywords, and clearer impact.",
+    description: "Suggestions appear for stronger bullets, missing keywords, and clearer impact.",
   },
   {
     number: "05",
@@ -178,12 +169,7 @@ export const pricingPlans = [
     name: "Free",
     price: { monthly: 0, yearly: 0 },
     description: "Everything you need to get started.",
-    features: [
-      "Basic resume builder",
-      "Limited templates",
-      "Basic AI suggestions",
-      "PDF export",
-    ],
+    features: ["Basic resume builder", "Limited templates", "Basic AI suggestions", "PDF export"],
     highlighted: false,
   },
   {
@@ -226,8 +212,7 @@ export const testimonials = [
     initials: "SM",
   },
   {
-    quote:
-      "The ATS feedback immediately showed me what was missing from my resume.",
+    quote: "The ATS feedback immediately showed me what was missing from my resume.",
     name: "Daniel R.",
     role: "Software Engineer",
     initials: "DR",
@@ -266,8 +251,7 @@ export const faqItems = [
   },
   {
     question: "Can I create multiple resumes?",
-    answer:
-      "Yes. Keep a master resume and create as many job-specific versions as you need.",
+    answer: "Yes. Keep a master resume and create as many job-specific versions as you need.",
   },
   {
     question: "How does AI job tailoring work?",

@@ -1,7 +1,7 @@
 import DownloadPdfButton from "@/components/(app)/general/buttons/download-pdf-button";
-import Aurora from "@/components/(app)/general/templates/auora";
 import Horizon from "@/components/(app)/general/templates/horizan";
 import Nova from "@/components/(app)/general/templates/nova";
+import TemplateFifteen from "@/components/(app)/general/templates/template-fifteen";
 import { seniorSoftwareEngineerResume } from "@/data/resume";
 // ... other imports
 
@@ -31,10 +31,10 @@ const HomePage = () => {
 
         <hr />
 
-        <Aurora resume={resume} id="resume-page-two" />
+        <TemplateFifteen resume={resume} id="templte id" />
 
         <DownloadPdfButton
-          elementId="resume-page-two"
+          elementId="templateid"
           fileName={`${resume.personal.firstName}--${resume.personal.lastName}-two`}
         />
       </div>
@@ -43,3 +43,24 @@ const HomePage = () => {
 };
 
 export default HomePage;
+
+// for thee e color chnage is used his one
+
+//  <div className="mx-auto mb-6 flex w-full max-w-[1200px] items-center justify-end px-4">
+//     <ResumeAppearanceDialog
+//       resume={resume}
+//       onChange={setResume}
+//     >
+//       <button
+//         type="button"
+//         className="inline-flex h-10 items-center gap-2 rounded-lg border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-muted"
+//       >
+//         <Palette className="size-4" />
+//         Change appearance
+//       </button>
+//     </ResumeAppearanceDialog>
+//   </div>
+
+//   const [resume, setResume] = useState<ResumeData>(
+// seniorSoftwareEngineerResume,
+// );

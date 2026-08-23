@@ -1,8 +1,8 @@
+import { ThemeProvider } from "@/components/(app)/general/themes/theme-provider";
+import { Footer } from "@/components/(app)/pages/landingpage/footer";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/(app)/general/themes/theme-provider";
-import { Container } from "@/components/(app)/general/layouts/container-two";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,10 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <ThemeProvider
           attribute="class"
@@ -32,7 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          <Container>{children}</Container>
+          {children}
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
