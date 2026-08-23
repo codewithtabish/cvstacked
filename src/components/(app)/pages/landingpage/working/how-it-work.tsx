@@ -1,15 +1,16 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import {
-  Upload,
+  ArrowRight,
+  CheckCircle2,
+  Download,
+  FileText,
   Sparkles,
   Target,
-  Download,
-  ArrowRight,
-  FileText,
-  CheckCircle2,
+  Upload,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 const steps = [
@@ -47,8 +48,10 @@ const steps = [
   },
 ];
 
-const container = {
-  hidden: { opacity: 0 },
+const container: Variants = {
+  hidden: {
+    opacity: 0,
+  },
   show: {
     opacity: 1,
     transition: {
@@ -58,8 +61,11 @@ const container = {
   },
 };
 
-const item = {
-  hidden: { opacity: 0, y: 28 },
+const item: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 28,
+  },
   show: {
     opacity: 1,
     y: 0,
@@ -75,7 +81,9 @@ export default function HowItWorks() {
     <section className="relative overflow-hidden bg-background py-20 sm:py-24 lg:py-28">
       {/* Background accents */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_50%_at_50%_0%,hsl(var(--primary)/0.07),transparent_65%)]" />
+
       <div className="pointer-events-none absolute -left-32 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-primary/5 blur-[100px]" />
+
       <div className="pointer-events-none absolute -right-32 top-1/3 h-72 w-72 rounded-full bg-amber-500/5 blur-[100px]" />
 
       <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
@@ -99,8 +107,7 @@ export default function HowItWorks() {
             transition={{ duration: 0.6, delay: 0.05 }}
             className="font-serif text-[2.1rem] leading-[1.15] tracking-tight sm:text-[2.5rem] lg:text-[2.85rem]"
           >
-            From blank page to{" "}
-            <span className="text-primary">interview-ready</span> in minutes
+            From blank page to <span className="text-primary">interview-ready</span> in minutes
           </motion.h2>
 
           <motion.p
@@ -110,9 +117,8 @@ export default function HowItWorks() {
             transition={{ duration: 0.55, delay: 0.1 }}
             className="mt-4 text-[1.05rem] leading-relaxed text-muted-foreground"
           >
-            No complicated tools. No design skills needed. Just follow these
-            four steps and walk away with a resume that recruiters actually want
-            to read.
+            No complicated tools. No design skills needed. Just follow these four steps and walk
+            away with a resume that recruiters actually want to read.
           </motion.p>
         </div>
 
@@ -126,15 +132,12 @@ export default function HowItWorks() {
         >
           {steps.map((step, index) => {
             const Icon = step.icon;
+
             return (
-              <motion.div
-                key={step.number}
-                variants={item}
-                className="group relative"
-              >
-                {/* Connecting line (desktop only) */}
+              <motion.div key={step.number} variants={item} className="group relative">
+                {/* Connecting line */}
                 {index < steps.length - 1 && (
-                  <div className="pointer-events-none absolute left-[calc(100%+0.25rem)] top-10 hidden h-px w-[calc(100%-0.5rem)] bg-gradient-to-r from-border to-transparent lg:block" />
+                  <div className="pointer-events-none absolute left-[calc(100%+0.25rem)] top-10 hidden h-px w-[calc(100%-0.5rem)] bg-linear-to-r from-border to-transparent lg:block" />
                 )}
 
                 <div className="relative h-full rounded-2xl border border-border bg-background p-6 shadow-sm transition-all duration-300 hover:border-primary/25 hover:shadow-md">
@@ -143,6 +146,7 @@ export default function HowItWorks() {
                     <span className="font-serif text-[1.6rem] font-semibold tracking-tight text-muted-foreground/40">
                       {step.number}
                     </span>
+
                     <div
                       className={`flex h-11 w-11 items-center justify-center rounded-xl ${step.accent} transition-transform duration-300 group-hover:scale-110`}
                     >
@@ -159,7 +163,7 @@ export default function HowItWorks() {
                   </p>
 
                   {/* Subtle bottom accent on hover */}
-                  <div className="absolute bottom-0 left-6 right-6 h-px origin-left scale-x-0 bg-gradient-to-r from-primary/40 to-transparent transition-transform duration-400 group-hover:scale-x-100" />
+                  <div className="absolute bottom-0 left-6 right-6 h-px origin-left scale-x-0 bg-linear-to-r from-primary/40 to-transparent transition-transform duration-400 group-hover:scale-x-100" />
                 </div>
               </motion.div>
             );
@@ -174,10 +178,7 @@ export default function HowItWorks() {
           transition={{ duration: 0.6, delay: 0.25 }}
           className="mt-14 flex flex-col items-center justify-center gap-5 sm:mt-16 sm:flex-row"
         >
-          <Button
-            size="lg"
-            className="h-12 rounded-full px-7 text-[14.5px] font-medium"
-          >
+          <Button size="lg" className="h-12 rounded-full px-7 text-[14.5px] font-medium">
             Start Building Free
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
