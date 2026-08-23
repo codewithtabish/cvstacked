@@ -1,13 +1,15 @@
+import type { Metadata } from "next";
+
 import { Container } from "@/components/(app)/general/layouts/container-two";
 import AIResumeNavbar from "@/components/(app)/general/navbars/resume-navbar";
-import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    default: "Alentah",
-    template: "%s | Alentah",
+    default: "CVStacked — AI Resume Builder",
+    template: "%s | CVStacked",
   },
-  description: "Create, optimize, and tailor professional resumes with Alentah.",
+  description:
+    "Build professional resumes with CVStacked. Choose from modern resume templates, customize your CV, and optimize it with AI for the job you want.",
 };
 
 interface MainLayoutProps {
