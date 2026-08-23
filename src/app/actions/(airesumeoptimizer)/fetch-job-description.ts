@@ -1,7 +1,12 @@
 "use server";
 
 const BRIGHTDATA_API_URL = "https://api.brightdata.com/request";
+
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
+
+// ============================================================
+// Types
+// ============================================================
 
 type SuccessResult = {
   success: true;
@@ -23,6 +28,25 @@ type BrightDataJsonResponse = {
   error?: string;
 };
 
+type OpenAIOutputContent = {
+  type?: string;
+  text?: string;
+};
+
+type OpenAIOutputItem = {
+  type?: string;
+  content?: OpenAIOutputContent[];
+};
+
+type OpenAIResponse = {
+  output_text?: string;
+  output?: OpenAIOutputItem[];
+};
+
+// ============================================================
+// URL validation
+// ============================================================
+
 const isValidHttpUrl = (value: string): boolean => {
   try {
     const url = new URL(value);
@@ -33,22 +57,26 @@ const isValidHttpUrl = (value: string): boolean => {
   }
 };
 
+// ============================================================
+// HTML cleanup
+// ============================================================
+
 const cleanHtml = (html: string): string => {
   return (
     html
-      // Remove scripts, styles, SVGs and noscript content.
+      // Remove scripts, styles, noscript and SVGs.
       .replace(/<(script|style|noscript|svg)[^>]*>[\s\S]*?<\/\1>/gi, " ")
 
       // Remove HTML comments.
       .replace(/<!--[\s\S]*?-->/g, " ")
 
-      // Add line breaks around common block elements.
+      // Add line breaks around block elements.
       .replace(/<\/(p|div|section|article|main|header|footer|li|h1|h2|h3|h4|h5|h6|br)>/gi, "\n")
 
       // Remove remaining HTML tags.
       .replace(/<[^>]+>/g, " ")
 
-      // Decode common HTML entities.
+      // Decode common entities.
       .replace(/&nbsp;/gi, " ")
       .replace(/&amp;/gi, "&")
       .replace(/&quot;/gi, '"')
@@ -56,39 +84,41 @@ const cleanHtml = (html: string): string => {
       .replace(/&lt;/gi, "<")
       .replace(/&gt;/gi, ">")
 
-      // Normalize whitespace.
+      // Normalize spaces.
       .replace(/[ \t]+/g, " ")
+
+      // Normalize excessive line breaks.
       .replace(/\n\s*\n+/g, "\n")
 
       .trim()
   );
 };
 
-const extractBrightDataContent = (rawResponse: string): string => {
-  const trimmedResponse = rawResponse.trim();
+// ============================================================
+// Extract Bright Data content
+// ============================================================
 
-  if (!trimmedResponse) {
+const extractBrightDataContent = (responseText: string): string => {
+  const trimmed = responseText.trim();
+
+  if (!trimmed) {
     return "";
   }
 
-  // ------------------------------------------------------------
-  // Bright Data may return the actual page directly.
-  // ------------------------------------------------------------
+  // ----------------------------------------------------------
+  // Raw HTML / Markdown response
+  // ----------------------------------------------------------
 
-  if (
-    trimmedResponse.startsWith("<") ||
-    trimmedResponse.startsWith("<!DOCTYPE") ||
-    trimmedResponse.startsWith("<html")
-  ) {
-    return trimmedResponse;
+  if (trimmed.startsWith("<") || trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+    return trimmed;
   }
 
-  // ------------------------------------------------------------
-  // It may also return a JSON envelope.
-  // ------------------------------------------------------------
+  // ----------------------------------------------------------
+  // Try JSON response
+  // ----------------------------------------------------------
 
   try {
-    const parsed = JSON.parse(trimmedResponse) as BrightDataJsonResponse;
+    const parsed = JSON.parse(trimmed) as BrightDataJsonResponse;
 
     if (typeof parsed.body === "string" && parsed.body.trim()) {
       return parsed.body;
@@ -98,26 +128,35 @@ const extractBrightDataContent = (rawResponse: string): string => {
       return parsed.data;
     }
 
-    if (parsed.error && parsed.error.trim()) {
+    if (typeof parsed.error === "string" && parsed.error.trim()) {
       throw new Error(parsed.error);
     }
 
-    if (parsed.message && parsed.message.trim()) {
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
       throw new Error(parsed.message);
     }
   } catch (error) {
-    // If it isn't JSON, treat it as raw page content.
-    if (error instanceof Error && error.message !== "Unexpected end of JSON input") {
-      const looksLikeJson = trimmedResponse.startsWith("{") || trimmedResponse.startsWith("[");
+    // If the response looks like JSON,
+    // preserve the actual parsing/API error.
+    const looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
 
-      if (looksLikeJson) {
+    if (looksLikeJson) {
+      if (error instanceof Error) {
         throw error;
       }
+
+      throw new Error("Bright Data returned an invalid JSON response.");
     }
+
+    // Otherwise treat it as raw content.
   }
 
-  return trimmedResponse;
+  return trimmed;
 };
+
+// ============================================================
+// Fetch job page through Bright Data
+// ============================================================
 
 const fetchJobPage = async (jobUrl: string): Promise<string> => {
   const apiKey = process.env.BRIGHTDATA_API_KEY;
@@ -134,20 +173,28 @@ const fetchJobPage = async (jobUrl: string): Promise<string> => {
 
   const response = await fetch(BRIGHTDATA_API_URL, {
     method: "POST",
+
     headers: {
       "Content-Type": "application/json",
+
       Authorization: `Bearer ${apiKey}`,
+
       Accept: "application/json, text/plain, text/html, */*",
     },
+
     body: JSON.stringify({
       zone,
       url: jobUrl,
       format: "raw",
       data_format: "markdown",
     }),
+
     cache: "no-store",
   });
 
+  // IMPORTANT:
+  // Bright Data can return raw HTML/text.
+  // Therefore do NOT call response.json() here.
   const responseText = await response.text();
 
   if (!response.ok) {
@@ -171,6 +218,38 @@ const fetchJobPage = async (jobUrl: string): Promise<string> => {
   return content;
 };
 
+// ============================================================
+// Extract OpenAI text
+// ============================================================
+
+const extractOpenAIText = (result: OpenAIResponse): string => {
+  // ----------------------------------------------------------
+  // Preferred Responses API convenience field
+  // ----------------------------------------------------------
+
+  if (typeof result.output_text === "string" && result.output_text.trim()) {
+    return result.output_text.trim();
+  }
+
+  // ----------------------------------------------------------
+  // Fallback: extract from output[].content[]
+  // ----------------------------------------------------------
+
+  const text = result.output
+    ?.flatMap((item) => item.content ?? [])
+    .filter((content) => content.type === "output_text" && typeof content.text === "string")
+    .map((content) => content.text!.trim())
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+
+  return text ?? "";
+};
+
+// ============================================================
+// Generate polished job description
+// ============================================================
+
 const generateJobDescription = async (pageText: string): Promise<string> => {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -178,6 +257,7 @@ const generateJobDescription = async (pageText: string): Promise<string> => {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
 
+  // Prevent an unnecessarily large request.
   const trimmedText = pageText.slice(0, 50000);
 
   const prompt = `
@@ -191,11 +271,17 @@ IMPORTANT RULES:
 
 - Do not invent information.
 - Do not add requirements that are not present.
-- Ignore navigation, advertisements, cookie notices, menus, footer content, unrelated recommendations, and website boilerplate.
+- Ignore navigation.
+- Ignore advertisements.
+- Ignore cookie notices.
+- Ignore menus.
+- Ignore footer content.
+- Ignore unrelated job recommendations.
+- Ignore website boilerplate.
 - Preserve important job-specific information.
-- Identify the job title when available.
-- Identify the company when available.
-- Identify the location when available.
+- Include the job title when available.
+- Include the company when available.
+- Include the location when available.
 - Include employment type when available.
 - Include the main job description.
 - Include responsibilities.
@@ -206,13 +292,16 @@ IMPORTANT RULES:
 - Include important technologies, tools, frameworks, certifications, and keywords.
 - Include salary information when available.
 - Include benefits when clearly provided.
-- If some information is unavailable, omit it.
-- Do not guess missing information.
-- Do not mention scraping, Bright Data, HTML, extraction, or this instruction.
+- If information is unavailable, omit it.
+- Never guess missing information.
+- Do not mention Bright Data.
+- Do not mention scraping.
+- Do not mention HTML.
+- Do not mention extraction.
 - Do not explain your process.
 - Return only the polished job description.
 - Keep the wording faithful to the original posting.
-- Organize the information clearly with headings and bullet points where appropriate.
+- Organize the result clearly with headings and bullet points where appropriate.
 
 JOB POSTING CONTENT:
 
@@ -221,18 +310,26 @@ ${trimmedText}
 
   const response = await fetch(OPENAI_API_URL, {
     method: "POST",
+
     headers: {
       "Content-Type": "application/json",
+
       Authorization: `Bearer ${apiKey}`,
     },
+
     body: JSON.stringify({
-      model: "gpt-5",
+      model: "gpt-5.6",
       input: prompt,
     }),
+
     cache: "no-store",
   });
 
   const responseText = await response.text();
+
+  // ----------------------------------------------------------
+  // OpenAI API error
+  // ----------------------------------------------------------
 
   if (!response.ok) {
     let errorMessage = responseText.replace(/\s+/g, " ").trim();
@@ -246,33 +343,43 @@ ${trimmedText}
     );
   }
 
-  let result: {
-    output_text?: string;
-  };
+  // ----------------------------------------------------------
+  // Parse OpenAI response
+  // ----------------------------------------------------------
+
+  let result: OpenAIResponse;
 
   try {
-    result = JSON.parse(responseText) as {
-      output_text?: string;
-    };
+    result = JSON.parse(responseText) as OpenAIResponse;
   } catch {
     throw new Error("OpenAI returned an invalid JSON response.");
   }
 
-  const jobDescription = result.output_text?.trim();
+  // ----------------------------------------------------------
+  // Extract generated text
+  // ----------------------------------------------------------
+
+  const jobDescription = extractOpenAIText(result);
 
   if (!jobDescription) {
+    console.error("OpenAI response did not contain output text:", JSON.stringify(result, null, 2));
+
     throw new Error("OpenAI returned an empty job description.");
   }
 
   return jobDescription;
 };
 
+// ============================================================
+// Main Server Action
+// ============================================================
+
 export async function fetchJobDescriptionFromUrl(url: string): Promise<FetchJobDescriptionResult> {
   const jobUrl = url.trim();
 
-  // ------------------------------------------------------------
-  // Validate URL
-  // ------------------------------------------------------------
+  // ----------------------------------------------------------
+  // Empty URL
+  // ----------------------------------------------------------
 
   if (!jobUrl) {
     return {
@@ -280,6 +387,10 @@ export async function fetchJobDescriptionFromUrl(url: string): Promise<FetchJobD
       error: "Please provide a job posting URL.",
     };
   }
+
+  // ----------------------------------------------------------
+  // Invalid URL
+  // ----------------------------------------------------------
 
   if (!isValidHttpUrl(jobUrl)) {
     return {
@@ -291,17 +402,17 @@ export async function fetchJobDescriptionFromUrl(url: string): Promise<FetchJobD
   try {
     console.log(`Fetching job page through Bright Data: ${jobUrl}`);
 
-    // ----------------------------------------------------------
-    // Fetch page
-    // ----------------------------------------------------------
+    // --------------------------------------------------------
+    // 1. Fetch job page
+    // --------------------------------------------------------
 
     const rawPage = await fetchJobPage(jobUrl);
 
     console.log(`Bright Data response received. Content length: ${rawPage.length}`);
 
-    // ----------------------------------------------------------
-    // Convert HTML/Markdown into readable text
-    // ----------------------------------------------------------
+    // --------------------------------------------------------
+    // 2. Clean page content
+    // --------------------------------------------------------
 
     const pageText = cleanHtml(rawPage);
 
@@ -314,11 +425,15 @@ export async function fetchJobDescriptionFromUrl(url: string): Promise<FetchJobD
       };
     }
 
-    // ----------------------------------------------------------
-    // Generate polished job description
-    // ----------------------------------------------------------
+    // --------------------------------------------------------
+    // 3. Generate polished job description with OpenAI
+    // --------------------------------------------------------
 
     const jobDescription = await generateJobDescription(pageText);
+
+    // --------------------------------------------------------
+    // 4. Final validation
+    // --------------------------------------------------------
 
     if (!jobDescription.trim()) {
       return {
@@ -331,7 +446,7 @@ export async function fetchJobDescriptionFromUrl(url: string): Promise<FetchJobD
 
     return {
       success: true,
-      jobDescription,
+      jobDescription: jobDescription.trim(),
     };
   } catch (error) {
     console.error("Job page fetch failed:", error);
