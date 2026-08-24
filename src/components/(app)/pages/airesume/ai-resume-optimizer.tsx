@@ -1,1246 +1,1162 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
+/**
+ * /ai-resume-optimizer — public marketing page for CVSTACKED's AI Resume Optimizer.
+ *
+ * Theme-aware (light + dark) via shadcn tokens.
+ * No navbar / footer / auth. Single CTA → /app
+ * Scroll arrows: hero ↓ + floating ↑ to top
+ */
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
+  AnimatePresence,
+  motion,
+  useInView,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+} from "framer-motion";
+import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
+  BadgeCheck,
   Check,
-  ChevronRight,
   FileText,
-  GripVertical,
+  Layers,
+  ListChecks,
   Lock,
-  LogIn,
-  RotateCcw,
-  ScanSearch,
+  ScanLine,
   ShieldCheck,
   Sparkles,
   Target,
-  Trash2,
-  Upload,
-  WandSparkles,
-  Zap,
+  Wand2,
 } from "lucide-react";
+import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
-import {
-  ChangeEvent,
-  DragEvent,
-  KeyboardEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  display: "swap",
+});
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
-/* -------------------------------------------------------------------------- */
-/* Types                                                                      */
-/* -------------------------------------------------------------------------- */
+const displayFont = "font-[family-name:var(--font-display)]";
+const monoFont = "font-[family-name:var(--font-mono)]";
 
-type OptimizerStatus = "idle" | "uploading" | "ready" | "analyzing" | "completed";
+/* ------------------------------------------------------------------ */
+/*  Shared demo data                                                   */
+/* ------------------------------------------------------------------ */
 
-interface AnalysisStep {
-  title: string;
-  description: string;
-}
+const RESUME_EXPERIENCE = [
+  { text: "Built scalable web applications", tier: "high" as const },
+  { text: "Improved frontend performance", tier: "high" as const },
+  { text: "Led frontend architecture decisions", tier: "high" as const },
+  { text: "Collaborated with product designers", tier: "mid" as const },
+  { text: "Maintained internal tooling", tier: "low" as const },
+];
 
-interface OptimizationResult {
-  jobMatch: number;
-  keywordCoverage: number;
-  relevantExperience: "Strong" | "Good" | "Needs review";
-}
+const RESUME_SKILLS = ["React", "Next.js", "TypeScript", "Accessibility", "Performance"];
 
-interface FloatingKeyword {
-  label: string;
-  position: string;
-  delay: number;
-}
+const JOB_REQUIREMENTS = [
+  "React",
+  "TypeScript",
+  "Next.js",
+  "Frontend Architecture",
+  "Performance",
+  "Accessibility",
+  "Leadership",
+];
 
-/* -------------------------------------------------------------------------- */
-/* Constants                                                                  */
-/* -------------------------------------------------------------------------- */
+const KEYWORDS = [
+  { term: "React", state: "match" as const },
+  { term: "Next.js", state: "match" as const },
+  { term: "TypeScript", state: "match" as const },
+  { term: "Accessibility", state: "match" as const },
+  { term: "Frontend Architecture", state: "recommended" as const },
+  { term: "Leadership", state: "relevant" as const },
+];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-const ANALYSIS_STEPS: AnalysisStep[] = [
+const PIPELINE_STAGES = [
   {
-    title: "Reading your resume",
-    description: "Understanding your experience and career story.",
+    n: "01",
+    label: "Read your resume",
+    detail: "CVSTACKED parses structure, roles, and accomplishments.",
   },
   {
-    title: "Understanding the job",
-    description: "Identifying the requirements of your target role.",
+    n: "02",
+    label: "Understand the job",
+    detail: "The target role's requirements are extracted from its description.",
   },
   {
-    title: "Matching your experience",
-    description: "Connecting relevant experience to the opportunity.",
+    n: "03",
+    label: "Extract requirements",
+    detail: "Skills, tools, and responsibilities are identified and ranked.",
   },
   {
-    title: "Improving relevant content",
-    description: "Strengthening clarity, relevance, and professional phrasing.",
+    n: "04",
+    label: "Match your experience",
+    detail: "Each requirement is compared against your existing background.",
   },
   {
-    title: "Preparing your tailored resume",
-    description: "Organizing the recommendations for your review.",
+    n: "05",
+    label: "Identify important keywords",
+    detail: "Role-specific language is surfaced for relevance and ATS parsing.",
+  },
+  {
+    n: "06",
+    label: "Improve relevance",
+    detail: "Wording is sharpened without changing what you actually did.",
+  },
+  {
+    n: "07",
+    label: "Prepare a tailored resume",
+    detail: "A focused version is ready for your review.",
   },
 ];
 
-const FLOATING_KEYWORDS: FloatingKeyword[] = [
-  { label: "React", position: "left-[2%] top-[22%]", delay: 0 },
-  { label: "Next.js", position: "right-[1%] top-[18%]", delay: 0.4 },
-  { label: "TypeScript", position: "left-[-2%] top-[48%]", delay: 0.8 },
-  { label: "Leadership", position: "right-[-2%] top-[46%]", delay: 1.2 },
-  { label: "Frontend", position: "left-[4%] bottom-[18%]", delay: 1.6 },
-  { label: "5+ years", position: "right-[3%] bottom-[16%]", delay: 2 },
-];
+/* ------------------------------------------------------------------ */
+/*  Primitives                                                         */
+/* ------------------------------------------------------------------ */
 
-const SAMPLE_JOB_DESCRIPTION = `Senior Frontend Engineer
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        monoFont,
+        "inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-primary",
+      )}
+    >
+      <span className="h-[3px] w-[3px] rounded-full bg-primary" />
+      {children}
+    </span>
+  );
+}
 
-We are looking for an experienced frontend engineer to build scalable, accessible web applications.
-
-Requirements:
-• 5+ years of frontend development experience
-• Strong React and TypeScript experience
-• Experience with Next.js
-• Understanding of modern frontend architecture
-• Strong communication and leadership skills
-• Experience improving performance and accessibility`;
-
-const SAMPLE_BEFORE = "Built web applications using React and worked with frontend technologies.";
-
-const SAMPLE_AFTER =
-  "Built scalable React applications with TypeScript, focusing on performance, accessibility, and maintainable frontend architecture.";
-
-/* -------------------------------------------------------------------------- */
-/* Animation helpers                                                          */
-/* -------------------------------------------------------------------------- */
-
-const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 20,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.55,
-      ease: [0.22, 1, 0.36, 1],
-    },
-  },
-};
-
-const staggerContainer: Variants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.08,
-    },
-  },
-};
-
-/* -------------------------------------------------------------------------- */
-/* Small reusable components                                                   */
-/* -------------------------------------------------------------------------- */
-
-function SectionEyebrow({
-  children,
-  icon: Icon,
+function SectionHeading({
+  eyebrow,
+  title,
+  sub,
+  align = "left",
 }: {
-  children: React.ReactNode;
-  icon?: typeof Sparkles;
+  eyebrow: string;
+  title: React.ReactNode;
+  sub?: string;
+  align?: "left" | "center";
 }) {
   return (
-    <Badge variant="secondary" className="gap-1.5 rounded-full border px-3 py-1 font-medium">
-      {Icon ? <Icon className="size-3.5" /> : null}
-      {children}
-    </Badge>
-  );
-}
-
-function FeatureIcon({ icon: Icon }: { icon: typeof Target }) {
-  return (
-    <div className="flex size-10 items-center justify-center rounded-lg border bg-muted/50">
-      <Icon className="size-5 text-foreground" />
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Navbar                                                                     */
-/* -------------------------------------------------------------------------- */
-
-function OptimizerNavbar() {
-  return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-8">
-          <Link
-            href="/"
-            className="text-lg font-semibold tracking-tight transition-opacity hover:opacity-70"
-          >
-            Alentah
-          </Link>
-
-          <nav aria-label="Primary navigation" className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/templates"
-              className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              Templates
-            </Link>
-
-            <Link
-              href="/ai-resume-optimizer"
-              aria-current="page"
-              className="rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
-            >
-              AI Resume
-            </Link>
-
-            <Link
-              href="/pricing"
-              className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              Pricing
-            </Link>
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href="/login">
-              <LogIn className="mr-2 size-4" />
-              Log in
-            </Link>
-          </Button>
-
-          <Button asChild size="sm">
-            <Link href="/app">Create Resume</Link>
-          </Button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Hero                                                                       */
-/* -------------------------------------------------------------------------- */
-
-function OptimizerHero() {
-  return (
-    <section className="relative overflow-hidden border-b">
-      <div className="mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 sm:pb-20 sm:pt-24 lg:px-8">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-          className="mx-auto max-w-3xl text-center"
-        >
-          <motion.div variants={fadeUp}>
-            <SectionEyebrow icon={Sparkles}>AI-powered resume optimization</SectionEyebrow>
-          </motion.div>
-
-          <motion.h1
-            variants={fadeUp}
-            className="mt-6 text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl"
-          >
-            Tailor your resume to the job you want.
-          </motion.h1>
-
-          <motion.p
-            variants={fadeUp}
-            className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg"
-          >
-            Upload your resume, add the job description, and let Alentah help you highlight the
-            experience, skills, and achievements that matter most for the role.
-          </motion.p>
-
-          <motion.div
-            variants={fadeUp}
-            className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5" />
-              User-controlled edits
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Lock className="size-3.5" />
-              Privacy-conscious workflow
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="size-3.5" />
-              No fabricated experience
-            </span>
-          </motion.div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Resume Upload                                                              */
-/* -------------------------------------------------------------------------- */
-
-interface ResumeUploadProps {
-  file: File | null;
-  dragging: boolean;
-  disabled: boolean;
-  onFileSelect: (file: File) => void;
-  onRemove: () => void;
-}
-
-function ResumeUpload({ file, dragging, disabled, onFileSelect, onRemove }: ResumeUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const validateAndSelect = useCallback(
-    (candidate: File | undefined) => {
-      if (!candidate) return;
-
-      const extension = candidate.name.split(".").pop()?.toLowerCase();
-
-      if (extension !== "pdf" && extension !== "docx") {
-        return;
-      }
-
-      if (candidate.size > MAX_FILE_SIZE) {
-        return;
-      }
-
-      onFileSelect(candidate);
-    },
-    [onFileSelect],
-  );
-
-  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    validateAndSelect(event.target.files?.[0]);
-    event.target.value = "";
-  };
-
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-
-    if (disabled) return;
-
-    validateAndSelect(event.dataTransfer.files?.[0]);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (disabled) return;
-
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      inputRef.current?.click();
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="font-semibold tracking-tight">Your resume</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Upload the resume you want to tailor.</p>
-      </div>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        className="sr-only"
-        onChange={handleInputChange}
-        disabled={disabled}
-        aria-label="Upload resume"
-      />
-
-      <AnimatePresence mode="wait">
-        {file ? (
-          <motion.div
-            key="uploaded"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            className="rounded-xl border bg-muted/30 p-4"
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-background">
-                <FileText className="size-5" />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{file.name}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>{formatFileSize(file.size)}</span>
-                  <span aria-hidden="true">•</span>
-                  <span>{file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "DOCX"}</span>
-                  <Badge variant="outline" className="ml-1 gap-1">
-                    <Check className="size-3" />
-                    Ready
-                  </Badge>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onRemove}
-                aria-label="Remove resume"
-                className="shrink-0"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-
-            <Separator className="my-4" />
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => inputRef.current?.click()}
-            >
-              Replace file
-            </Button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            role="button"
-            tabIndex={disabled ? -1 : 0}
-            aria-disabled={disabled}
-            onClick={() => !disabled && inputRef.current?.click()}
-            onKeyDown={handleKeyDown}
-            onDragOver={(event: any) => {
-              event.preventDefault();
-            }}
-            onDragEnter={(event: any) => {
-              event.preventDefault();
-            }}
-            onDrop={handleDrop}
-            className={cn(
-              "group relative flex min-h-[245px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed p-6 text-center transition-all",
-              "hover:border-foreground/30 hover:bg-muted/30",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              dragging && "border-foreground/50 bg-muted/50 shadow-sm",
-              disabled && "pointer-events-none opacity-60",
-            )}
-          >
-            <motion.div
-              animate={
-                dragging
-                  ? {
-                      scale: 1.08,
-                      y: -3,
-                    }
-                  : {
-                      scale: 1,
-                      y: 0,
-                    }
-              }
-              transition={{ duration: 0.2 }}
-              className="mb-4 flex size-12 items-center justify-center rounded-xl border bg-background shadow-sm"
-            >
-              <Upload className="size-5" />
-            </motion.div>
-
-            <p className="text-sm font-medium">
-              {dragging ? "Drop your resume here" : "Drop your resume here"}
-            </p>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              or{" "}
-              <span className="font-medium text-foreground underline underline-offset-4">
-                browse files
-              </span>
-            </p>
-
-            <p className="mt-4 text-xs text-muted-foreground">PDF or DOCX · Up to 10 MB</p>
-
-            {dragging && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute inset-0 pointer-events-none border-2 border-foreground/20"
-              />
-            )}
-          </motion.div>
+    <div className={cn("max-w-2xl", align === "center" && "mx-auto text-center")}>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2
+        className={cn(
+          displayFont,
+          "mt-4 text-3xl sm:text-4xl md:text-[2.75rem] leading-[1.12] tracking-tight text-foreground",
         )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Job Description                                                            */
-/* -------------------------------------------------------------------------- */
-
-interface JobDescriptionInputProps {
-  value: string;
-  disabled: boolean;
-  onChange: (value: string) => void;
-}
-
-function JobDescriptionInput({ value, disabled, onChange }: JobDescriptionInputProps) {
-  return (
-    <div className="flex min-h-full flex-col space-y-4">
-      <div>
-        <h2 className="font-semibold tracking-tight">Target job</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Paste the job description you&apos;re applying for.
-        </p>
-      </div>
-
-      <div className="relative flex-1">
-        <Textarea
-          value={value}
-          onChange={(event: any) => onChange(event.target.value)}
-          disabled={disabled}
-          placeholder="Paste the job description here..."
-          className="min-h-[245px] resize-none rounded-xl bg-background pr-4 text-sm leading-6 shadow-none focus-visible:ring-1"
-          aria-label="Target job description"
-        />
-
-        <div className="pointer-events-none absolute bottom-3 right-3 rounded-md bg-background/90 px-2 py-1 text-[11px] text-muted-foreground">
-          {value.length.toLocaleString()} characters
-        </div>
-      </div>
-
-      {!value && (
-        <button
-          type="button"
-          onClick={() => onChange(SAMPLE_JOB_DESCRIPTION)}
-          disabled={disabled}
-          className="self-start text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-        >
-          Use sample job description
-        </button>
+      >
+        {title}
+      </h2>
+      {sub && (
+        <p className="mt-4 text-[15px] sm:text-base leading-relaxed text-muted-foreground">{sub}</p>
       )}
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Optimize button                                                           */
-/* -------------------------------------------------------------------------- */
-
-function OptimizeButton({
-  disabled,
-  loading,
-  onClick,
+function KeywordChip({
+  label,
+  state,
+  delay = 0,
 }: {
-  disabled: boolean;
-  loading: boolean;
-  onClick: () => void;
+  label: string;
+  state: "match" | "relevant" | "recommended";
+  delay?: number;
+}) {
+  const styles = {
+    match: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+    relevant: "bg-primary/10 text-primary border-primary/30",
+    recommended: "bg-muted text-muted-foreground border-border",
+  }[state];
+
+  const tag = {
+    match: "Match",
+    relevant: "Relevant",
+    recommended: "Recommended",
+  }[state];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.4, delay }}
+      className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5", styles)}
+    >
+      <span className="text-[13px] font-medium text-foreground">{label}</span>
+      <span className={cn(monoFont, "text-[10px] uppercase tracking-wider opacity-90")}>
+        {state === "match" && <Check className="inline h-3 w-3 -mt-0.5 mr-0.5" />}
+        {tag}
+      </span>
+    </motion.div>
+  );
+}
+
+function AnimatedCounter({
+  to,
+  suffix = "%",
+  trigger,
+}: {
+  to: number;
+  suffix?: string;
+  trigger: boolean;
+}) {
+  const [value, setValue] = useState(0);
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (!trigger) return;
+
+    if (reduce) {
+      const id = setTimeout(() => setValue(to), 0);
+      return () => clearTimeout(id);
+    }
+
+    const steps = [0, Math.round(to * 0.28), Math.round(to * 0.54), Math.round(to * 0.78), to];
+    let i = 0;
+    const id = setInterval(() => {
+      setValue(steps[i]);
+      i++;
+      if (i >= steps.length) clearInterval(id);
+    }, 180);
+    return () => clearInterval(id);
+  }, [trigger, to, reduce]);
+
+  return (
+    <span className={cn(monoFont, "text-primary")}>
+      {value}
+      {suffix}
+    </span>
+  );
+}
+
+function CreateResumeButton({
+  size = "lg",
+  className,
+}: {
+  size?: "default" | "lg";
+  className?: string;
 }) {
   return (
     <Button
-      type="button"
-      size="lg"
-      disabled={disabled || loading}
-      onClick={onClick}
-      className="h-12 w-full px-6 sm:w-auto"
+      asChild
+      size={size}
+      className={cn("group rounded-full px-7 h-12 text-[15px] font-medium", className)}
     >
-      {loading ? (
-        <>
-          <span className="mr-2 size-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
-          Preparing analysis...
-        </>
-      ) : (
-        <>
-          <Sparkles className="mr-2 size-4 transition-transform group-hover:rotate-12" />
-          Optimize My Resume
-        </>
-      )}
+      <Link href="/app" aria-label="Create your resume with CVSTACKED">
+        Create Resume
+        <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+      </Link>
     </Button>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Workspace                                                                  */
-/* -------------------------------------------------------------------------- */
-
-interface OptimizerWorkspaceProps {
-  file: File | null;
-  jobDescription: string;
-  dragging: boolean;
-  status: OptimizerStatus;
-  onFileSelect: (file: File) => void;
-  onRemoveFile: () => void;
-  onJobDescriptionChange: (value: string) => void;
-  onOptimize: () => void;
-  onDragStateChange: (dragging: boolean) => void;
-}
-
-function OptimizerWorkspace({
-  file,
-  jobDescription,
-  dragging,
-  status,
-  onFileSelect,
-  onRemoveFile,
-  onJobDescriptionChange,
-  onOptimize,
-  onDragStateChange,
-}: OptimizerWorkspaceProps) {
-  const canOptimize = Boolean(file) && jobDescription.trim().length > 0 && status !== "analyzing";
-
+function GridBackdrop() {
   return (
-    <section id="optimizer" className="scroll-mt-24">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 18, scale: 0.99 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <Card className="overflow-hidden border shadow-sm">
-            <div className="border-b bg-muted/20 px-5 py-4 sm:px-7">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold">Resume optimizer</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Your resume + the role you want = a more focused application.
-                  </p>
-                </div>
-
-                <Badge variant="outline" className="w-fit gap-1.5">
-                  <Zap className="size-3" />
-                  Frontend demo
-                </Badge>
-              </div>
-            </div>
-
-            <div
-              onDragEnter={() => onDragStateChange(true)}
-              onDragLeave={() => onDragStateChange(false)}
-              className={cn("p-5 transition-colors sm:p-7", dragging && "bg-muted/20")}
-            >
-              <div className="grid gap-7 lg:grid-cols-2">
-                <ResumeUpload
-                  file={file}
-                  dragging={dragging}
-                  disabled={status === "analyzing"}
-                  onFileSelect={onFileSelect}
-                  onRemove={onRemoveFile}
-                />
-
-                <JobDescriptionInput
-                  value={jobDescription}
-                  disabled={status === "analyzing"}
-                  onChange={onJobDescriptionChange}
-                />
-              </div>
-
-              <Separator className="my-7" />
-
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Lock className="size-3.5" />
-                  <span>Alentah improves your existing experience — it does not invent it.</span>
-                </div>
-
-                <OptimizeButton
-                  disabled={!canOptimize}
-                  loading={status === "uploading"}
-                  onClick={onOptimize}
-                />
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-      </div>
-    </section>
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 opacity-[0.4] dark:opacity-[0.35]"
+      style={{
+        backgroundImage:
+          "linear-gradient(to right, hsl(var(--border) / 0.6) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.6) 1px, transparent 1px)",
+        backgroundSize: "64px 64px",
+        maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%)",
+      }}
+    />
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Resume scan preview                                                        */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  Scroll arrows                                                      */
+/* ------------------------------------------------------------------ */
 
-function ResumeScanPreview({ file, analysisStep }: { file: File | null; analysisStep: number }) {
-  const reduceMotion = useReducedMotion();
+/** Floating ↑ button – appears after scrolling down */
+function ScrollToTopButton() {
+  const [visible, setVisible] = useState(false);
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 480);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  };
 
   return (
-    <div className="relative mx-auto w-full max-w-[510px]">
-      <div className="relative aspect-[0.77] w-full overflow-visible">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute left-1/2 top-1/2 z-10 h-[92%] w-[70%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border bg-background shadow-xl"
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 12 }}
+          transition={{ duration: 0.22 }}
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="fixed bottom-6 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card/95 text-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <div className="flex h-11 items-center justify-between border-b px-4">
-            <div className="flex items-center gap-2">
-              <FileText className="size-3.5 text-muted-foreground" />
-              <span className="max-w-[180px] truncate text-[10px] font-medium">
-                {file?.name || "resume.pdf"}
-              </span>
-            </div>
+          <ArrowUp className="h-4 w-4" />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
 
-            <span className="text-[9px] text-muted-foreground">Preview</span>
-          </div>
+/** Hero ↓ indicator – sits at the bottom of the hero */
+function HeroScrollDown() {
+  const reduce = useReducedMotion();
 
-          <div className="space-y-4 p-5">
-            <div>
-              <div className="h-4 w-32 rounded bg-foreground/80" />
-              <div className="mt-2 h-2 w-24 rounded bg-muted-foreground/40" />
-            </div>
+  const scrollDown = () => {
+    window.scrollBy({
+      top: window.innerHeight * 0.85,
+      behavior: reduce ? "auto" : "smooth",
+    });
+  };
 
-            <div className="space-y-1.5">
-              <div className="h-1.5 w-full rounded bg-muted" />
-              <div className="h-1.5 w-[92%] rounded bg-muted" />
-              <div className="h-1.5 w-[84%] rounded bg-muted" />
-            </div>
-
-            <div>
-              <div className="mb-2 h-2 w-20 rounded bg-foreground/60" />
-              <div className="space-y-1.5">
-                <div className="h-1.5 w-full rounded bg-muted" />
-                <div className="h-1.5 w-[95%] rounded bg-muted" />
-                <div className="h-1.5 w-[87%] rounded bg-muted" />
-                <div className="h-1.5 w-[90%] rounded bg-muted" />
-                <div className="h-1.5 w-[75%] rounded bg-muted" />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-2 h-2 w-14 rounded bg-foreground/60" />
-              <div className="flex flex-wrap gap-1.5">
-                {["React", "Next.js", "TypeScript", "Leadership"].map((skill) => (
-                  <span
-                    key={skill}
-                    className="rounded border bg-muted/50 px-2 py-1 text-[8px] text-muted-foreground"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-2 h-2 w-16 rounded bg-foreground/60" />
-              <div className="space-y-1.5">
-                <div className="h-1.5 w-[96%] rounded bg-muted" />
-                <div className="h-1.5 w-[80%] rounded bg-muted" />
-                <div className="h-1.5 w-[88%] rounded bg-muted" />
-              </div>
-            </div>
-          </div>
-
-          {!reduceMotion && (
-            <motion.div
-              aria-hidden="true"
-              initial={{ top: "0%" }}
-              animate={{ top: ["0%", "100%", "0%"] }}
-              transition={{
-                duration: 3.8,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="pointer-events-none absolute left-0 right-0 z-20 h-px bg-foreground/70 shadow-[0_0_12px_hsl(var(--foreground)/0.35)]"
-            />
-          )}
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-background to-transparent opacity-90" />
+  return (
+    <div className="mt-10 flex justify-center pb-4">
+      <button
+        onClick={scrollDown}
+        aria-label="Scroll down"
+        className="group flex flex-col items-center gap-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+      >
+        <span className={cn(monoFont, "text-[10px] uppercase tracking-[0.18em]")}>Scroll</span>
+        <motion.div
+          animate={reduce ? {} : { y: [0, 6, 0] }}
+          transition={{
+            duration: 1.6,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/80 shadow-sm backdrop-blur-sm transition-colors group-hover:border-primary/40 group-hover:bg-primary/5"
+        >
+          <ArrowDown className="h-4 w-4" />
         </motion.div>
-
-        {!reduceMotion &&
-          FLOATING_KEYWORDS.map((keyword) => (
-            <motion.div
-              key={keyword.label}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{
-                opacity: [0.35, 1, 0.35],
-                scale: [0.96, 1, 0.96],
-              }}
-              transition={{
-                duration: 2.8,
-                repeat: Infinity,
-                delay: keyword.delay,
-                ease: "easeInOut",
-              }}
-              className={cn(
-                "absolute z-20 rounded-full border bg-background px-2.5 py-1 text-[10px] font-medium shadow-sm",
-                keyword.position,
-              )}
-            >
-              {keyword.label}
-            </motion.div>
-          ))}
-
-        <div className="absolute inset-x-0 bottom-0 z-30 mx-auto flex max-w-[310px] items-center justify-center">
-          <Badge variant="secondary" className="gap-2 rounded-full border shadow-sm">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-foreground/30" />
-              <span className="relative inline-flex size-2 rounded-full bg-foreground/70" />
-            </span>
-            Alentah AI is analyzing
-          </Badge>
-        </div>
-      </div>
-
-      <p className="sr-only" aria-live="polite">
-        Currently analyzing step {analysisStep + 1} of {ANALYSIS_STEPS.length}.
-      </p>
+      </button>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Analysis steps                                                             */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  Mid-page CTA                                                       */
+/* ------------------------------------------------------------------ */
 
-function AnalysisSteps({ currentStep }: { currentStep: number }) {
+function MidCtaSection() {
   return (
-    <div className="space-y-2">
-      {ANALYSIS_STEPS.map((step, index) => {
-        const complete = index < currentStep;
-        const active = index === currentStep;
-
-        return (
-          <motion.div
-            key={step.title}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.04 }}
+    <section className="relative px-6 py-16 sm:py-20">
+      <div className="mx-auto max-w-3xl">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.5 }}
+          className="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center sm:px-10 sm:py-14"
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_50%_0%,hsl(var(--primary)/0.1),transparent_70%)]"
+          />
+          <p
+            className={cn(monoFont, "relative text-[11px] uppercase tracking-[0.2em] text-primary")}
+          >
+            Start in minutes
+          </p>
+          <h3
             className={cn(
-              "flex items-start gap-3 rounded-lg border px-3.5 py-3 transition-colors",
-              active && "bg-muted/60",
-              !active && !complete && "border-transparent",
+              displayFont,
+              "relative mt-3 text-2xl sm:text-3xl tracking-tight text-foreground",
             )}
           >
-            <div
-              className={cn(
-                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
-                complete && "bg-foreground text-background",
-                active && "border-foreground",
-                !complete && !active && "border-muted-foreground/30",
-              )}
-            >
-              {complete ? (
-                <Check className="size-3" />
-              ) : active ? (
-                <motion.span
-                  animate={{ opacity: [0.35, 1, 0.35] }}
-                  transition={{ duration: 1.3, repeat: Infinity }}
-                  className="size-1.5 rounded-full bg-foreground"
-                />
-              ) : null}
-            </div>
-
-            <div className="min-w-0">
-              <p
-                className={cn(
-                  "text-sm font-medium",
-                  !active && !complete && "text-muted-foreground",
-                )}
-              >
-                {step.title}
-              </p>
-
-              <AnimatePresence initial={false}>
-                {active && (
-                  <motion.p
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="mt-1 overflow-hidden text-xs leading-5 text-muted-foreground"
-                  >
-                    {step.description}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* AI Analysis                                                                */
-/* -------------------------------------------------------------------------- */
-
-function AiAnalysis({ file, analysisStep }: { file: File | null; analysisStep: number }) {
-  const progress = Math.min(100, Math.round(((analysisStep + 1) / ANALYSIS_STEPS.length) * 100));
-
-  return (
-    <section aria-live="polite" aria-label="AI resume analysis" className="border-y bg-muted/10">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-          <div>
-            <div className="mb-6">
-              <Badge variant="outline" className="gap-2">
-                <ScanSearch className="size-3.5" />
-                AI analysis in progress
-              </Badge>
-
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
-                Looking for the strongest connection between your experience and this role.
-              </h2>
-
-              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-                Alentah is analyzing your resume against the target job. This demo uses frontend
-                timing; the same state can later be driven by a real AI API.
-              </p>
-            </div>
-
-            <div className="max-w-lg">
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="font-medium">{ANALYSIS_STEPS[analysisStep]?.title}</span>
-                <span className="text-muted-foreground">{progress}%</span>
-              </div>
-
-              <Progress value={progress} className="h-1.5" />
-
-              <div className="mt-6">
-                <AnalysisSteps currentStep={analysisStep} />
-              </div>
-            </div>
+            Put your experience in the right context.
+          </h3>
+          <p className="relative mx-auto mt-3 max-w-md text-[15px] text-muted-foreground">
+            Create a resume, choose a target role, and let CVSTACKED help you focus what matters.
+          </p>
+          <div className="relative mt-8 flex justify-center">
+            <CreateResumeButton />
           </div>
-
-          <ResumeScanPreview file={file} analysisStep={analysisStep} />
-        </div>
+        </motion.div>
       </div>
     </section>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Result metrics                                                             */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  Hero product visual                                                */
+/* ------------------------------------------------------------------ */
 
-function ResultMetric({ label, value, helper }: { label: string; value: string; helper?: string }) {
+const HERO_SIGNALS = [
+  { label: "React", top: "8%", left: "4%" },
+  { label: "Leadership", top: "18%", left: "80%" },
+  { label: "Performance", top: "48%", left: "-6%" },
+  { label: "Accessibility", top: "72%", left: "84%" },
+  { label: "TypeScript", top: "86%", left: "2%" },
+  { label: "Next.js", top: "58%", left: "88%" },
+];
+
+function HeroProductVisual() {
+  const reduce = useReducedMotion();
+  const [scanning, setScanning] = useState(0);
+  const detections = [
+    "Experience detected",
+    "Skills detected",
+    "Keywords identified",
+    "Role relevance calculated",
+  ];
+
+  useEffect(() => {
+    if (reduce) return;
+    const id = setInterval(() => setScanning((s) => (s + 1) % detections.length), 1900);
+    return () => clearInterval(id);
+  }, [reduce, detections.length]);
+
   return (
-    <div className="rounded-xl border bg-background p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-2 text-xl font-semibold tracking-tight">{value}</p>
-      {helper && <p className="mt-1 text-xs text-muted-foreground">{helper}</p>}
-    </div>
-  );
-}
+    <div className="relative mx-auto mt-16 min-h-[720px] w-full max-w-3xl pb-8 sm:min-h-[820px]">
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_55%_45%_at_50%_40%,hsl(var(--primary)/0.12),transparent_70%)] blur-3xl"
+      />
 
-/* -------------------------------------------------------------------------- */
-/* Before / After                                                             */
-/* -------------------------------------------------------------------------- */
+      {HERO_SIGNALS.map((s, i) => (
+        <motion.div
+          key={s.label}
+          className={cn(
+            monoFont,
+            "absolute hidden sm:block rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-[11px] tracking-wide text-primary",
+          )}
+          style={{ top: s.top, left: s.left }}
+          initial={{ opacity: 0 }}
+          animate={reduce ? { opacity: 0.85 } : { opacity: [0.35, 0.9, 0.35], y: [0, -8, 0] }}
+          transition={{
+            duration: 5 + i,
+            repeat: reduce ? 0 : Infinity,
+            ease: "easeInOut",
+            delay: i * 0.3,
+          }}
+        >
+          {s.label}
+        </motion.div>
+      ))}
 
-function BeforeAfterPreview() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card className="overflow-hidden shadow-none">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold">Before</p>
-            <p className="text-xs text-muted-foreground">Sample content</p>
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="relative mx-auto w-[280px] overflow-hidden rounded-[6px] border border-black/5 bg-[#F7F4EC] text-[#211D17] shadow-2xl shadow-black/20 ring-1 ring-black/5 sm:w-[360px] dark:border-white/10 dark:bg-[#211F1B] dark:text-[#F7F4EC] dark:shadow-black/60 dark:ring-white/10"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-multiply dark:opacity-[0.025] dark:mix-blend-soft-light"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          }}
+        />
+
+        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
+          <p className={cn(displayFont, "text-lg sm:text-xl")}>Senior Frontend Engineer</p>
+          <p
+            className={cn(
+              monoFont,
+              "mt-1 text-[10px] uppercase tracking-[0.16em] text-[#8B8375] dark:text-[#BEB5A6]",
+            )}
+          >
+            Professional Summary
+          </p>
+          <div className="mt-2 h-[6px] w-full rounded-full bg-black/10 dark:bg-white/10" />
+          <div className="mt-1.5 h-[6px] w-4/5 rounded-full bg-black/10 dark:bg-white/10" />
+          <div className="mt-1.5 h-[6px] w-3/5 rounded-full bg-black/10 dark:bg-white/10" />
+
+          <p
+            className={cn(
+              monoFont,
+              "mt-6 text-[10px] uppercase tracking-[0.16em] text-[#8B8375] dark:text-[#BEB5A6]",
+            )}
+          >
+            Experience
+          </p>
+
+          <p className="mt-2 text-[13px] font-medium">Frontend Engineer — 2022 — Present</p>
+          <ul className="mt-2 space-y-1.5">
+            {[
+              "Built scalable web applications",
+              "Improved frontend performance",
+              "Developed React interfaces",
+              "Worked with TypeScript",
+              "Led migration to Next.js App Router",
+            ].map((line) => (
+              <li
+                key={line}
+                className="flex items-start gap-1.5 text-[12px] leading-snug text-black/70 dark:text-white/72"
+              >
+                <span className="mt-1.5 h-[3px] w-[3px] flex-none rounded-full bg-[#8B8375] dark:bg-[#BEB5A6]" />
+                {line}
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-4 text-[13px] font-medium">Frontend Developer — 2020 — 2022</p>
+          <ul className="mt-2 space-y-1.5">
+            {[
+              "Shipped accessible UI components",
+              "Partnered with design on visual systems",
+              "Reduced bundle size across core routes",
+            ].map((line) => (
+              <li
+                key={line}
+                className="flex items-start gap-1.5 text-[12px] leading-snug text-black/70 dark:text-white/72"
+              >
+                <span className="mt-1.5 h-[3px] w-[3px] flex-none rounded-full bg-[#8B8375] dark:bg-[#BEB5A6]" />
+                {line}
+              </li>
+            ))}
+          </ul>
+
+          <p
+            className={cn(
+              monoFont,
+              "mt-6 text-[10px] uppercase tracking-[0.16em] text-[#8B8375] dark:text-[#BEB5A6]",
+            )}
+          >
+            Skills
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {RESUME_SKILLS.map((s) => (
+              <span
+                key={s}
+                className="rounded-full bg-black/6 px-2 py-0.5 text-[10px] text-black/75 dark:bg-white/8 dark:text-white/75"
+              >
+                {s}
+              </span>
+            ))}
           </div>
 
-          <Badge variant="outline">Original</Badge>
-        </div>
-
-        <div className="p-5">
-          <p className="text-sm leading-7 text-muted-foreground">{SAMPLE_BEFORE}</p>
-        </div>
-      </Card>
-
-      <Card className="overflow-hidden shadow-none">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold">Tailored</p>
-            <p className="text-xs text-muted-foreground">Sample content</p>
-          </div>
-
-          <Badge variant="secondary" className="gap-1">
-            <Sparkles className="size-3" />
-            Improved
-          </Badge>
-        </div>
-
-        <div className="p-5">
-          <p className="text-sm leading-7 text-muted-foreground">
-            <span className="rounded bg-muted px-1.5 py-0.5 text-foreground">{SAMPLE_AFTER}</span>
+          <p
+            className={cn(
+              monoFont,
+              "mt-6 text-[10px] uppercase tracking-[0.16em] text-[#8B8375] dark:text-[#BEB5A6]",
+            )}
+          >
+            Education
+          </p>
+          <p className="mt-2 text-[12.5px] font-medium">B.S. Computer Science</p>
+          <p className="text-[11.5px] text-black/60 dark:text-white/60">
+            University of Washington — 2020
           </p>
         </div>
-      </Card>
+
+        {!reduce && (
+          <motion.div
+            aria-hidden
+            className="absolute inset-x-0 h-24 bg-linear-to-b from-transparent via-primary/20 to-transparent"
+            animate={{ top: ["-10%", "104%"] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "linear" }}
+          />
+        )}
+      </motion.div>
+
+      <div className="mt-6 flex justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={detections[scanning]}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.35 }}
+            className={cn(
+              monoFont,
+              "flex items-center gap-2 rounded-full border border-border bg-card/80 px-3.5 py-1.5 text-[11px] text-primary backdrop-blur-sm",
+            )}
+          >
+            <ScanLine className="h-3.5 w-3.5" />
+            {detections[scanning]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Optimization result                                                       */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  1. Hero                                                            */
+/* ------------------------------------------------------------------ */
 
-function OptimizationResult({
-  result,
-  onReview,
-  onStartOver,
-}: {
-  result: OptimizationResult;
-  onReview: () => void;
-  onStartOver: () => void;
-}) {
+function HeroSection() {
   return (
-    <section aria-live="polite" className="border-y bg-muted/10">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+    <section className="relative overflow-hidden px-6 pt-20 pb-4 sm:pt-28 md:pt-32">
+      <GridBackdrop />
+      <div className="mx-auto max-w-3xl text-center">
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.5 }}
         >
-          <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="secondary" className="gap-1.5">
-              <Check className="size-3.5" />
-              Analysis complete
-            </Badge>
-
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Your tailored resume is ready.
-            </h2>
-
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              We&apos;ve identified the most relevant parts of your experience for this role. These
-              demo values are illustrative and will be replaced by real API results.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-9 max-w-4xl">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <ResultMetric label="Job match" value={`${result.jobMatch}%`} helper="Demo value" />
-              <ResultMetric
-                label="Relevant experience"
-                value={result.relevantExperience}
-                helper="Demo assessment"
-              />
-              <ResultMetric
-                label="Keyword coverage"
-                value={`${result.keywordCoverage}%`}
-                helper="Demo value"
-              />
-            </div>
-
-            <div className="mt-5">
-              <BeforeAfterPreview />
-            </div>
-
-            <div className="mt-7 flex flex-col-reverse justify-center gap-3 sm:flex-row">
-              <Button type="button" variant="outline" onClick={onStartOver}>
-                <RotateCcw className="mr-2 size-4" />
-                Start Over
-              </Button>
-
-              <Button type="button" size="lg" onClick={onReview}>
-                Review My Resume
-                <ArrowRight className="ml-2 size-4" />
-              </Button>
-            </div>
-          </div>
+          <Eyebrow>CVSTACKED · AI Resume Optimizer</Eyebrow>
         </motion.div>
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className={cn(
+            displayFont,
+            "mt-5 text-[2.6rem] leading-[1.05] tracking-tight text-foreground sm:text-6xl md:text-7xl",
+          )}
+        >
+          Tailor your resume to the job you want.
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-lg"
+        >
+          CVSTACKED reads the relationship between your experience and the role you&rsquo;re
+          targeting, then helps you bring the right parts forward — clearly, and in the language the
+          role actually calls for.
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-9 flex justify-center"
+        >
+          <CreateResumeButton />
+        </motion.div>
+      </div>
+
+      <HeroProductVisual />
+
+      {/* ↓ arrow lives here – bottom of hero */}
+      <HeroScrollDown />
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  2. Resume ↔ Job matching                                           */
+/* ------------------------------------------------------------------ */
+
+function JobMatchSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+
+  return (
+    <section className="relative px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-5xl">
+        <SectionHeading
+          eyebrow="Resume × Role"
+          title="Understand how your experience fits the role."
+          sub="CVSTACKED lines up what you've done against what the role asks for — then shows you exactly where the overlap is."
+        />
+
+        <div
+          ref={ref}
+          className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-[1fr_auto_1fr] md:items-start md:gap-4"
+        >
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p
+              className={cn(
+                monoFont,
+                "text-[11px] uppercase tracking-[0.18em] text-muted-foreground",
+              )}
+            >
+              Your Resume
+            </p>
+            <p className={cn(displayFont, "mt-2 text-lg text-foreground")}>Frontend Engineer</p>
+            <ul className="mt-4 space-y-2.5">
+              {RESUME_EXPERIENCE.slice(0, 4).map((e) => (
+                <li
+                  key={e.text}
+                  className="flex items-start gap-2 text-[13px] text-muted-foreground"
+                >
+                  <span className="mt-1.5 h-1 w-1 flex-none rounded-full bg-primary" />
+                  {e.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex flex-row items-center justify-center gap-2 py-4 md:flex-col md:py-0">
+            {["React", "TypeScript", "Next.js", "Accessibility", "Leadership"].map((k, i) => (
+              <motion.div
+                key={k}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={inView ? { opacity: 1, scale: 1 } : {}}
+                transition={{ delay: 0.3 + i * 0.12, duration: 0.35 }}
+                className="flex items-center gap-1.5"
+              >
+                <span className="hidden h-px w-6 bg-border md:block" />
+                <span
+                  className={cn(
+                    monoFont,
+                    "whitespace-nowrap rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 text-[10px] text-emerald-700 dark:text-emerald-400",
+                  )}
+                >
+                  <Check className="mr-1 inline h-2.5 w-2.5" />
+                  {k}
+                </span>
+                <span className="hidden h-px w-6 bg-border md:block" />
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p
+              className={cn(
+                monoFont,
+                "text-[11px] uppercase tracking-[0.18em] text-muted-foreground",
+              )}
+            >
+              Target Role
+            </p>
+            <p className={cn(displayFont, "mt-2 text-lg text-foreground")}>
+              Senior Frontend Engineer
+            </p>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {JOB_REQUIREMENTS.map((r) => (
+                <span
+                  key={r}
+                  className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-14 flex flex-col items-center justify-center gap-2 text-center">
+          <p className={cn(displayFont, "text-5xl sm:text-6xl")}>
+            <AnimatedCounter to={87} trigger={inView} />
+          </p>
+          <p
+            className={cn(monoFont, "text-[11px] uppercase tracking-[0.2em] text-muted-foreground")}
+          >
+            Job Match
+          </p>
+        </div>
       </div>
     </section>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* How It Works                                                               */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  3. Keyword intelligence                                            */
+/* ------------------------------------------------------------------ */
 
-const HOW_IT_WORKS = [
-  {
-    number: "01",
-    title: "Upload your resume",
-    description: "Start with the experience you already have.",
-  },
-  {
-    number: "02",
-    title: "Add the job description",
-    description: "Tell Alentah what role you&apos;re targeting.",
-  },
-  {
-    number: "03",
-    title: "Optimize with AI",
-    description: "Get a resume tailored around the most relevant parts of your background.",
-  },
-];
-
-function HowItWorks() {
+function KeywordIntelligenceSection() {
   return (
-    <section className="border-b">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={staggerContainer}
+    <section className="relative bg-muted/40 px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-4xl">
+        <SectionHeading
+          eyebrow="Keyword Intelligence"
+          title="Find the language that matters."
+          sub="CVSTACKED surfaces the specific terms this role cares about, and shows how your resume currently measures up against them."
+        />
+        <div className="mt-12 flex flex-wrap gap-2.5">
+          {KEYWORDS.map((k, i) => (
+            <KeywordChip key={k.term} label={k.term} state={k.state} delay={i * 0.06} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  4. Job requirements extraction                                     */
+/* ------------------------------------------------------------------ */
+
+function JobRequirementsSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+
+  return (
+    <section className="relative px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-4xl">
+        <SectionHeading
+          eyebrow="Role Understanding"
+          title="CVSTACKED understands the job before tailoring the resume."
+        />
+        <div ref={ref} className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p
+              className={cn(
+                monoFont,
+                "text-[11px] uppercase tracking-[0.18em] text-muted-foreground",
+              )}
+            >
+              Job Description
+            </p>
+            <p className={cn(displayFont, "mt-2 text-lg text-foreground")}>
+              Senior Frontend Engineer
+            </p>
+            <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+              &ldquo;We&rsquo;re looking for an experienced frontend engineer to build scalable,
+              accessible web applications and help guide our frontend architecture.&rdquo;
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p
+              className={cn(
+                monoFont,
+                "text-[11px] uppercase tracking-[0.18em] text-muted-foreground",
+              )}
+            >
+              Extracted Requirements
+            </p>
+            <div className="mt-3 space-y-2">
+              {JOB_REQUIREMENTS.map((r, i) => (
+                <motion.div
+                  key={r}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={inView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ delay: 0.15 + i * 0.09, duration: 0.35 }}
+                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+                >
+                  <span className="text-[13px] text-foreground">{r}</span>
+                  <BadgeCheck className="h-4 w-4 text-primary" />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  5. Before / after writing                                          */
+/* ------------------------------------------------------------------ */
+
+function BeforeAfterSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const before = "Built web applications using React and worked with frontend technologies.";
+  const after =
+    "Built scalable React applications with TypeScript, focusing on performance, accessibility, and maintainable frontend architecture.";
+  const additions = [
+    "scalable",
+    "TypeScript",
+    "performance",
+    "accessibility",
+    "maintainable",
+    "architecture",
+  ];
+
+  const renderAfter = () =>
+    after.split(/(\s+)/).map((word, i) => {
+      const clean = word.replace(/[.,]/g, "");
+      const isNew = additions.includes(clean);
+      return (
+        <motion.span
+          key={i}
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+          transition={{ delay: 0.4 + i * 0.02, duration: 0.3 }}
+          className={cn(isNew && "rounded bg-primary/15 px-0.5 text-primary")}
         >
-          <motion.div variants={fadeUp} className="max-w-2xl">
-            <SectionEyebrow icon={WandSparkles}>How it works</SectionEyebrow>
+          {word}
+        </motion.span>
+      );
+    });
 
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-              From your resume to a job-focused version.
-            </h2>
-          </motion.div>
+  return (
+    <section className="relative bg-muted/40 px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-3xl">
+        <SectionHeading
+          eyebrow="Stronger Writing"
+          title="Turn experience into stronger language."
+          align="center"
+        />
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {HOW_IT_WORKS.map((step) => (
-              <motion.div
-                key={step.number}
-                variants={fadeUp}
-                className="group rounded-xl border bg-background p-6 transition-colors hover:bg-muted/30"
+        <div ref={ref} className="mt-12 space-y-5">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p
+              className={cn(
+                monoFont,
+                "text-[10px] uppercase tracking-[0.18em] text-muted-foreground",
+              )}
+            >
+              Before
+            </p>
+            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{before}</p>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+              <Wand2 className="h-4 w-4 text-primary" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-primary/30 bg-card p-6">
+            <p className={cn(monoFont, "text-[10px] uppercase tracking-[0.18em] text-primary")}>
+              After
+            </p>
+            <p className="mt-2 text-[15px] leading-relaxed text-foreground">{renderAfter()}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  6. Experience relevance                                            */
+/* ------------------------------------------------------------------ */
+
+function ExperienceRelevanceSection() {
+  const ref = useRef<HTMLUListElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+
+  const tierMeta = {
+    high: {
+      label: "Highly relevant",
+      color: "bg-emerald-500",
+      text: "text-emerald-700 dark:text-emerald-400",
+      width: "100%",
+    },
+    mid: {
+      label: "Relevant",
+      color: "bg-primary",
+      text: "text-primary",
+      width: "62%",
+    },
+    low: {
+      label: "Less relevant",
+      color: "bg-muted-foreground/40",
+      text: "text-muted-foreground",
+      width: "30%",
+    },
+  };
+
+  return (
+    <section className="relative px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-3xl">
+        <SectionHeading
+          eyebrow="Experience Relevance"
+          title="Bring the right experience forward."
+          sub="Not every line carries the same weight for a given role. CVSTACKED highlights what matters most for this one."
+        />
+
+        <ul ref={ref} className="mt-12 space-y-3">
+          {RESUME_EXPERIENCE.map((e, i) => {
+            const meta = tierMeta[e.tier];
+            return (
+              <motion.li
+                key={e.text}
+                initial={{ opacity: 0, y: 10 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: i * 0.08, duration: 0.4 }}
+                className="rounded-xl border border-border bg-card p-4"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold tracking-[0.18em] text-muted-foreground">
-                    {step.number}
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[14px] text-foreground">{e.text}</span>
+                  <span
+                    className={cn(
+                      monoFont,
+                      "flex-none text-[10px] uppercase tracking-wider",
+                      meta.text,
+                    )}
+                  >
+                    {meta.label}
                   </span>
-                  <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
                 </div>
-
-                <h3 className="mt-12 text-lg font-semibold tracking-tight">{step.title}</h3>
-
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={inView ? { width: meta.width } : {}}
+                    transition={{
+                      delay: 0.2 + i * 0.08,
+                      duration: 0.6,
+                      ease: "easeOut",
+                    }}
+                    className={cn("h-full rounded-full", meta.color)}
+                  />
+                </div>
+              </motion.li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Features                                                                   */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  7. ATS pipeline                                                    */
+/* ------------------------------------------------------------------ */
 
-const FEATURES = [
-  {
-    icon: Target,
-    title: "Relevant Experience",
-    description: "Bring the most relevant parts of your background forward.",
-  },
-  {
-    icon: ScanSearch,
-    title: "Job-Specific Keywords",
-    description: "Identify language and skills that matter for the target role.",
-  },
-  {
-    icon: WandSparkles,
-    title: "Stronger Writing",
-    description: "Improve clarity, impact and professional phrasing.",
-  },
-  {
-    icon: FileText,
-    title: "ATS-Friendly Structure",
-    description: "Keep your resume clear and easy for hiring systems to parse.",
-  },
-];
-
-function OptimizerFeatures() {
-  return (
-    <section className="border-b">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.15 }}
-          variants={staggerContainer}
-        >
-          <motion.div variants={fadeUp} className="max-w-2xl">
-            <SectionEyebrow icon={Zap}>Built around relevance</SectionEyebrow>
-
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Better focus without changing who you are.
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              The goal is not to create a different career story. It&apos;s to make your existing
-              experience clearer and more relevant to the opportunity in front of you.
-            </p>
-          </motion.div>
-
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((feature) => (
-              <motion.div
-                key={feature.title}
-                variants={fadeUp}
-                className="rounded-xl border bg-background p-5 transition-colors hover:bg-muted/30"
-              >
-                <FeatureIcon icon={feature.icon} />
-
-                <h3 className="mt-5 font-semibold tracking-tight">{feature.title}</h3>
-
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Privacy                                                                    */
-/* -------------------------------------------------------------------------- */
-
-function PrivacySection() {
-  const trustItems = [
-    {
-      icon: Lock,
-      text: "Private resume handling",
-    },
-    {
-      icon: GripVertical,
-      text: "User-controlled edits",
-    },
-    {
-      icon: ShieldCheck,
-      text: "No fabricated experience",
-    },
-    {
-      icon: FileText,
-      text: "Review before download",
-    },
+function AtsPipelineSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const stages = ["Resume", "Structure", "ATS Parser", "Keywords", "Requirements", "Relevance"];
+  const checks = [
+    "Clear structure",
+    "Relevant keywords",
+    "Readable formatting",
+    "ATS-friendly hierarchy",
   ];
 
   return (
-    <section className="border-b">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
-          <div>
-            <div className="flex size-11 items-center justify-center rounded-xl border bg-muted/30">
-              <ShieldCheck className="size-5" />
+    <section className="relative bg-muted/40 px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-4xl">
+        <SectionHeading
+          eyebrow="ATS Optimization"
+          title="Built to move through the systems that screen resumes."
+        />
+
+        <div
+          ref={ref}
+          className="relative mt-14 flex flex-wrap items-center justify-between gap-y-6"
+        >
+          <div
+            aria-hidden
+            className="absolute left-0 right-0 top-1/2 hidden h-px -translate-y-1/2 bg-border sm:block"
+          />
+          {stages.map((s, i) => (
+            <div
+              key={s}
+              className="relative z-10 flex min-w-[100px] flex-1 flex-col items-center gap-2 px-1"
+            >
+              <motion.div
+                initial={{ scale: 0.4, opacity: 0 }}
+                animate={inView ? { scale: 1, opacity: 1 } : {}}
+                transition={{ delay: i * 0.15, duration: 0.35 }}
+                className="h-2.5 w-2.5 rounded-full bg-primary"
+              />
+              <span
+                className={cn(
+                  monoFont,
+                  "text-center text-[10px] uppercase tracking-wide text-muted-foreground",
+                )}
+              >
+                {s}
+              </span>
             </div>
+          ))}
+        </div>
 
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight">
-              Your experience stays yours.
-            </h2>
+        <div className="mt-14 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {checks.map((c, i) => (
+            <motion.div
+              key={c}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ delay: i * 0.08, duration: 0.4 }}
+              className="flex items-start gap-2 rounded-xl border border-border bg-card p-3.5"
+            >
+              <Check className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600 dark:text-emerald-400" />
+              <span className="text-[13px] text-foreground">{c}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
-              Alentah helps you present your existing experience more effectively. AI should enhance
-              your resume, not invent your career.
-            </p>
-          </div>
+/* ------------------------------------------------------------------ */
+/*  8. Scroll-driven analysis pipeline                                 */
+/* ------------------------------------------------------------------ */
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {trustItems.map((item) => {
-              const Icon = item.icon;
+function AiAnalysisPipeline() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end end"],
+  });
 
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    const idx = Math.min(PIPELINE_STAGES.length - 1, Math.floor(v * PIPELINE_STAGES.length));
+    setActive(idx);
+  });
+
+  return (
+    <section
+      ref={ref}
+      className="relative px-6"
+      style={{ height: `${PIPELINE_STAGES.length * 62}vh` }}
+    >
+      <div className="sticky top-0 flex h-screen flex-col justify-center py-16">
+        <div className="mx-auto w-full max-w-2xl">
+          <SectionHeading
+            eyebrow="How CVSTACKED Thinks"
+            title="From resume to role-specific focus."
+          />
+          <div className="mt-12 space-y-1">
+            {PIPELINE_STAGES.map((stage, i) => {
+              const state = i < active ? "done" : i === active ? "active" : "upcoming";
               return (
-                <div
-                  key={item.text}
-                  className="flex items-center gap-3 rounded-xl border bg-muted/20 px-4 py-4"
-                >
-                  <Icon className="size-4 shrink-0" />
-                  <span className="text-sm font-medium">{item.text}</span>
+                <div key={stage.n} className="flex items-start gap-4 py-3">
+                  <span
+                    className={cn(
+                      monoFont,
+                      "mt-0.5 flex-none text-[13px] transition-colors duration-300",
+                      state === "upcoming" && "text-border",
+                      state === "active" && "text-primary",
+                      state === "done" && "text-emerald-600 dark:text-emerald-400",
+                    )}
+                  >
+                    {state === "done" ? <Check className="h-3.5 w-3.5" /> : stage.n}
+                  </span>
+                  <div>
+                    <p
+                      className={cn(
+                        "text-[15px] font-medium transition-colors duration-300 sm:text-base",
+                        state === "upcoming"
+                          ? "text-muted-foreground opacity-45"
+                          : "text-foreground",
+                      )}
+                    >
+                      {stage.label}
+                    </p>
+                    <AnimatePresence>
+                      {state === "active" && (
+                        <motion.p
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-1 text-[13px] leading-relaxed text-muted-foreground"
+                        >
+                          {stage.detail}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               );
             })}
@@ -1251,35 +1167,143 @@ function PrivacySection() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Final CTA                                                                  */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  9. Product interface showcase                                      */
+/* ------------------------------------------------------------------ */
 
-function FinalCta({ onOptimize }: { onOptimize: () => void }) {
+function ProductShowcaseSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const [step, setStep] = useState<"suggest" | "applied">("suggest");
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (!inView || reduce) return;
+    const id = setTimeout(() => setStep("applied"), 2200);
+    return () => clearTimeout(id);
+  }, [inView, reduce]);
+
   return (
-    <section>
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <section className="relative px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-5xl">
+        <SectionHeading
+          eyebrow="Inside CVSTACKED"
+          title="A focused workspace for one resume, one role."
+          align="center"
+        />
+
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          ref={ref}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          className="relative overflow-hidden rounded-2xl border bg-muted/20 px-6 py-12 text-center sm:px-10 sm:py-16"
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-14 overflow-hidden rounded-2xl border border-border bg-card"
         >
-          <div className="relative z-10 mx-auto max-w-2xl">
-            <SectionEyebrow icon={Sparkles}>Ready for the next opportunity?</SectionEyebrow>
+          <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+            <span className={cn(monoFont, "ml-3 text-[11px] text-muted-foreground")}>
+              cvstacked.app — resume workspace
+            </span>
+          </div>
 
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Ready to tailor your resume?
-            </h2>
+          <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <div className="p-5">
+              <p
+                className={cn(
+                  monoFont,
+                  "text-[10px] uppercase tracking-[0.16em] text-muted-foreground",
+                )}
+              >
+                Resume Preview
+              </p>
+              <div className="mt-3 rounded-lg bg-[#F7F4EC] p-3 text-[#211D17]">
+                <p className="text-[11px] font-semibold">Frontend Engineer</p>
+                <div className="mt-2 space-y-1">
+                  <div className="h-[4px] w-full rounded-full bg-black/10" />
+                  <div className="h-[4px] w-4/5 rounded-full bg-black/10" />
+                  <motion.div
+                    animate={step === "applied" ? { backgroundColor: "rgba(201,164,99,0.5)" } : {}}
+                    className="h-[4px] w-3/5 rounded-full bg-black/10"
+                  />
+                </div>
+              </div>
+            </div>
 
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Upload your resume and target the next opportunity with confidence.
-            </p>
+            <div className="p-5">
+              <p
+                className={cn(
+                  monoFont,
+                  "text-[10px] uppercase tracking-[0.16em] text-muted-foreground",
+                )}
+              >
+                AI Recommendation
+              </p>
+              <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <p className="flex items-start gap-1.5 text-[12px] leading-snug text-foreground">
+                  <Sparkles className="mt-0.5 h-3.5 w-3.5 flex-none text-primary" />
+                  Consider emphasizing your accessibility experience for this role.
+                </p>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <AnimatePresence mode="wait">
+                    {step === "suggest" ? (
+                      <motion.span
+                        key="suggest"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={cn(
+                          monoFont,
+                          "text-[10px] uppercase tracking-wider text-muted-foreground",
+                        )}
+                      >
+                        Reviewing…
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="applied"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={cn(
+                          monoFont,
+                          "flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400",
+                        )}
+                      >
+                        <Check className="h-3 w-3" /> Applied · Resume updated
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
 
-            <Button type="button" size="lg" onClick={onOptimize} className="mt-7">
-              <Sparkles className="mr-2 size-4" />
-              Optimize My Resume
-            </Button>
+            <div className="p-5">
+              <p
+                className={cn(
+                  monoFont,
+                  "text-[10px] uppercase tracking-[0.16em] text-muted-foreground",
+                )}
+              >
+                Job Match
+              </p>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-muted-foreground">Job Match</span>
+                  <span className={cn(monoFont, "text-[13px] text-primary")}>87%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-muted-foreground">Keyword Coverage</span>
+                  <span className={cn(monoFont, "text-[13px] text-primary")}>92%</span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[12px] text-foreground">Strong relevant experience</span>
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -1287,210 +1311,274 @@ function FinalCta({ onOptimize }: { onOptimize: () => void }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Utility                                                                    */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  10. Trust                                                          */
+/* ------------------------------------------------------------------ */
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${Math.round(bytes / 1024)} KB`;
-  }
-
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Main component                                                             */
-/* -------------------------------------------------------------------------- */
-
-export default function AiResumeOptimizer() {
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState("");
-  const [status, setStatus] = useState<OptimizerStatus>("idle");
-  const [analysisStep, setAnalysisStep] = useState(0);
-  const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const analysisTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearAnalysisTimer = useCallback(() => {
-    if (analysisTimerRef.current) {
-      clearTimeout(analysisTimerRef.current);
-      analysisTimerRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      clearAnalysisTimer();
-    };
-  }, [clearAnalysisTimer]);
-
-  const handleFileSelect = useCallback((file: File) => {
-    setResumeFile(file);
-    setStatus("ready");
-    setResult(null);
-  }, []);
-
-  const handleRemoveFile = useCallback(() => {
-    setResumeFile(null);
-    setStatus("idle");
-    setResult(null);
-  }, []);
-
-  const handleStartOver = useCallback(() => {
-    clearAnalysisTimer();
-
-    setResumeFile(null);
-    setJobDescription("");
-    setAnalysisStep(0);
-    setResult(null);
-    setDragging(false);
-    setStatus("idle");
-
-    window.requestAnimationFrame(() => {
-      document.getElementById("optimizer")?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
-  }, [clearAnalysisTimer]);
-
-  /*
-   * Integration point:
-   * - Check authentication here.
-   * - If unauthenticated, open your real login/signup flow.
-   * - Do not create fake authentication state in this page.
-   */
-  const handleAuthenticationHandoff = useCallback((destination: string) => {
-    // Replace this with the application's actual auth guard/modal.
-    window.location.href = destination;
-  }, []);
-
-  /*
-   * Integration point:
-   * - Send resumeFile to your resume parsing endpoint.
-   * - Send jobDescription to your AI optimization endpoint.
-   * - Stream actual analysis events back into analysisStep.
-   *
-   * The frontend demo below intentionally simulates those events.
-   */
-  const handleOptimize = useCallback(() => {
-    if (!resumeFile || !jobDescription.trim()) {
-      return;
-    }
-
-    clearAnalysisTimer();
-    setResult(null);
-    setAnalysisStep(0);
-    setStatus("analyzing");
-
-    let step = 0;
-
-    const runStep = () => {
-      if (step < ANALYSIS_STEPS.length) {
-        setAnalysisStep(step);
-
-        step += 1;
-
-        analysisTimerRef.current = setTimeout(runStep, 1400);
-        return;
-      }
-
-      /*
-       * Integration point:
-       * Replace these demo values with the actual API response.
-       * These numbers are intentionally not calculated from the uploaded file.
-       */
-      setResult({
-        jobMatch: 87,
-        keywordCoverage: 92,
-        relevantExperience: "Strong",
-      });
-
-      setStatus("completed");
-    };
-
-    runStep();
-  }, [clearAnalysisTimer, jobDescription, resumeFile]);
-
-  const handleReview = useCallback(() => {
-    /*
-     * Integration point:
-     * - Persist the optimization result.
-     * - Verify authentication.
-     * - Redirect to the authenticated resume editor.
-     */
-    handleAuthenticationHandoff("/app");
-  }, [handleAuthenticationHandoff]);
-
-  const handleFinalCta = useCallback(() => {
-    document.getElementById("optimizer")?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }, []);
+function TrustSection() {
+  const points = [
+    { icon: FileText, text: "Uses your existing experience" },
+    { icon: Layers, text: "User-controlled edits" },
+    { icon: ShieldCheck, text: "Review before download" },
+    { icon: Lock, text: "No fabricated experience" },
+  ];
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <OptimizerHero />
+    <section className="relative bg-muted/40 px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-3xl text-center">
+        <SectionHeading
+          eyebrow="Trust"
+          title="AI should enhance your experience, not invent your career."
+          align="center"
+        />
+        <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {points.map((p, i) => (
+            <motion.div
+              key={p.text}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ delay: i * 0.1, duration: 0.4 }}
+              className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5"
+            >
+              <p.icon className="h-5 w-5 text-primary" />
+              <span className="text-[12.5px] leading-snug text-foreground">{p.text}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-      <AnimatePresence mode="wait">
-        {status === "analyzing" ? (
-          <motion.div
-            key="analysis"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <AiAnalysis file={resumeFile} analysisStep={analysisStep} />
-          </motion.div>
-        ) : status === "completed" && result ? (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <OptimizationResult
-              result={result}
-              onReview={handleReview}
-              onStartOver={handleStartOver}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="workspace"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-          >
-            <OptimizerWorkspace
-              file={resumeFile}
-              jobDescription={jobDescription}
-              dragging={dragging}
-              status={status}
-              onFileSelect={handleFileSelect}
-              onRemoveFile={handleRemoveFile}
-              onJobDescriptionChange={setJobDescription}
-              onOptimize={handleOptimize}
-              onDragStateChange={setDragging}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+/* ------------------------------------------------------------------ */
+/*  11. Feature showcase                                               */
+/* ------------------------------------------------------------------ */
 
-      <HowItWorks />
+function FeatureShowcaseSection() {
+  const features = [
+    {
+      icon: Target,
+      title: "Relevant Experience",
+      copy: "Bring the strongest parts of your background forward.",
+      visual: (
+        <div className="space-y-1.5">
+          {["Led frontend architecture", "Improved performance", "Maintained tooling"].map(
+            (t, i) => (
+              <div key={t} className="flex items-center gap-2">
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${90 - i * 28}%` }}
+                  />
+                </div>
+                <span className={cn(monoFont, "w-24 flex-none text-[10px] text-muted-foreground")}>
+                  {t}
+                </span>
+              </div>
+            ),
+          )}
+        </div>
+      ),
+    },
+    {
+      icon: ListChecks,
+      title: "Job-Specific Keywords",
+      copy: "Identify the language that matters for the target role.",
+      visual: (
+        <div className="flex flex-wrap gap-1.5">
+          {["React", "Accessibility", "Architecture"].map((k) => (
+            <span
+              key={k}
+              className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-700 dark:text-emerald-400"
+            >
+              {k}
+            </span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      icon: Wand2,
+      title: "Stronger Writing",
+      copy: "Improve clarity, impact, and professional phrasing.",
+      visual: (
+        <div className="space-y-1">
+          <p className="text-[11px] text-muted-foreground line-through opacity-60">
+            worked with frontend technologies
+          </p>
+          <p className="text-[11px] text-primary">maintainable frontend architecture</p>
+        </div>
+      ),
+    },
+    {
+      icon: ScanLine,
+      title: "ATS-Friendly Structure",
+      copy: "Keep information clear and parseable.",
+      visual: (
+        <div className="flex items-center gap-1.5">
+          {["Resume", "Parser", "Structure"].map((s, i) => (
+            <div key={s} className="flex items-center gap-1.5">
+              <span className={cn(monoFont, "text-[10px] text-muted-foreground")}>{s}</span>
+              {i < 2 && <ArrowRight className="h-3 w-3 text-border" />}
+            </div>
+          ))}
+        </div>
+      ),
+    },
+  ];
 
-      <OptimizerFeatures />
+  return (
+    <section className="relative px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-5xl">
+        <SectionHeading
+          eyebrow="Everything CVSTACKED Checks"
+          title="One system, four kinds of attention."
+        />
+        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {features.map((f, i) => (
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ delay: i * 0.08, duration: 0.45 }}
+              className="rounded-2xl border border-border bg-card p-6"
+            >
+              <f.icon className="h-4 w-4 text-primary" />
+              <p className={cn(displayFont, "mt-3 text-lg text-foreground")}>{f.title}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{f.copy}</p>
+              <div className="mt-4 border-t border-border pt-4">{f.visual}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-      <PrivacySection />
+/* ------------------------------------------------------------------ */
+/*  12. How it works                                                   */
+/* ------------------------------------------------------------------ */
 
-      <FinalCta onOptimize={handleFinalCta} />
-    </main>
+function HowItWorksSection() {
+  const steps = [
+    {
+      n: "01",
+      label: "Create your resume",
+      copy: "Start from your existing background.",
+    },
+    {
+      n: "02",
+      label: "Choose your target opportunity",
+      copy: "Tell CVSTACKED which role you're aiming for.",
+    },
+    {
+      n: "03",
+      label: "Let CVSTACKED help focus your resume",
+      copy: "Review a version tailored to that role.",
+    },
+  ];
+
+  return (
+    <section className="relative bg-muted/40 px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-4xl">
+        <SectionHeading
+          eyebrow="How It Works"
+          title="Three steps. Your experience, focused."
+          align="center"
+        />
+        <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-3">
+          {steps.map((s, i) => (
+            <motion.div
+              key={s.n}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ delay: i * 0.12, duration: 0.4 }}
+              className="text-center sm:text-left"
+            >
+              <span className={cn(monoFont, "text-[13px] text-primary")}>{s.n}</span>
+              <p className={cn(displayFont, "mt-2 text-lg text-foreground")}>{s.label}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{s.copy}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  13. Final CTA                                                      */
+/* ------------------------------------------------------------------ */
+
+function FinalCtaSection() {
+  return (
+    <section className="relative overflow-hidden px-6 py-28 sm:py-36">
+      <GridBackdrop />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,hsl(var(--primary)/0.12),transparent_70%)]"
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.5 }}
+        className="mx-auto max-w-2xl text-center"
+      >
+        <h2
+          className={cn(
+            displayFont,
+            "text-3xl leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl",
+          )}
+        >
+          Ready to build a resume that fits the opportunity?
+        </h2>
+        <p className="mx-auto mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+          Create your resume with CVSTACKED and put your experience in the right context for every
+          opportunity.
+        </p>
+        <div className="mt-9 flex justify-center">
+          <CreateResumeButton />
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+export default function AiResumeOptimizerPage() {
+  return (
+    <div
+      className={cn(
+        fraunces.variable,
+        inter.variable,
+        mono.variable,
+        "min-h-screen bg-background text-foreground font-(family-name:--font-body)",
+      )}
+    >
+      {/* Floating ↑ button */}
+      <ScrollToTopButton />
+
+      <HeroSection />
+      <JobMatchSection />
+      <KeywordIntelligenceSection />
+      <JobRequirementsSection />
+      <BeforeAfterSection />
+      <ExperienceRelevanceSection />
+      <AtsPipelineSection />
+      <AiAnalysisPipeline />
+      <ProductShowcaseSection />
+      <MidCtaSection />
+      <TrustSection />
+      <FeatureShowcaseSection />
+      <HowItWorksSection />
+      <FinalCtaSection />
+    </div>
   );
 }

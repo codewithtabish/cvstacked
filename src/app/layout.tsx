@@ -93,3 +93,5 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     </html>
   );
 }
+
+// https://www.recraft.ai/

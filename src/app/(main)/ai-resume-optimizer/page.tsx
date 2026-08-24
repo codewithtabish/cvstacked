@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import JobUrlTest from "@/components/(app)/pages/airesume/job-url-test";
+import AiResumeOptimizer from "@/components/(app)/pages/airesume/ai-resume-optimizer";
 
 export const metadata: Metadata = {
   title: "AI Resume Optimizer",
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 const Page = () => {
-  return <JobUrlTest />;
+  return <AiResumeOptimizer />;
 };
 
 export default Page;
