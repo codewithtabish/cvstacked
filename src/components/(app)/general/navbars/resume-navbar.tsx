@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth, useClerk, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -8,10 +9,13 @@ import { usePathname } from "next/navigation";
 import { CVStackedLogo } from "@/components/brand/cv-stacked-logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
 import { ModeToggle } from "../themes/mode-toggler";
 
 const AIResumeNavbar = () => {
   const pathname = usePathname();
+  const { isSignedIn } = useAuth();
+  const { openSignIn } = useClerk();
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -50,6 +54,7 @@ const AIResumeNavbar = () => {
           className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <CVStackedLogo className="max-[380px]:hidden" />
+
           <CVStackedLogo iconOnly className="hidden max-[380px]:inline-flex" />
         </Link>
 
@@ -88,16 +93,28 @@ const AIResumeNavbar = () => {
 
         {/* Right Actions */}
         <div className="flex shrink-0 items-center gap-2">
-          {/* Theme Toggle */}
           <ModeToggle />
 
-          {/* Create Resume */}
-          <Button
-            asChild
-            size="sm"
-            className="group relative overflow-hidden shadow-sm transition-all hover:shadow-md max-[380px]:size-8 max-[380px]:px-0"
-          >
-            <Link href="/app">
+          {isSignedIn ? (
+            <UserButton
+              // afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-9 w-9",
+                },
+              }}
+            />
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                openSignIn({
+                  forceRedirectUrl: "/app",
+                })
+              }
+              className="group relative overflow-hidden shadow-sm transition-all hover:shadow-md max-[380px]:size-8 max-[380px]:px-0"
+            >
               <motion.span
                 aria-hidden="true"
                 className="absolute inset-0 -translate-x-full bg-white/10"
@@ -112,10 +129,11 @@ const AIResumeNavbar = () => {
 
               <span className="relative flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-12" />
+
                 <span className="max-[380px]:sr-only">Create Resume</span>
               </span>
-            </Link>
-          </Button>
+            </Button>
+          )}
         </div>
       </div>
     </header>

@@ -358,7 +358,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
     minWidth: "210mm",
     minHeight: "297mm",
     boxSizing: "border-box",
-    backgroundColor: "#ff00ff",
+    backgroundColor: "#ffffff",
     fontFamily: font.family,
     overflow: "visible",
     color: colors.text,

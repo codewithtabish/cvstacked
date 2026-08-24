@@ -1,10 +1,12 @@
+import { ThemeProvider } from "@/components/(app)/general/themes/theme-provider";
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-
-import { ThemeProvider } from "@/components/(app)/general/themes/theme-provider";
-import { Footer } from "@/components/(app)/pages/landingpage/footer";
-
 import { Toaster } from "sonner";
+
+import { Footer } from "@/components/(app)/pages/landingpage/footer";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,9 +24,12 @@ export const metadata: Metadata = {
     default: "CVStacked — AI Resume Builder",
     template: "%s | CVStacked",
   },
+
   description:
     "Create a professional resume with CVStacked's AI-powered resume builder. Choose a modern template, customize your resume, and optimize it for your next job.",
+
   applicationName: "CVStacked",
+
   keywords: [
     "resume builder",
     "AI resume builder",
@@ -36,17 +41,22 @@ export const metadata: Metadata = {
     "resume optimizer",
     "professional resume",
   ],
+
   authors: [
     {
       name: "CVStacked",
     },
   ],
+
   creator: "CVStacked",
   publisher: "CVStacked",
+
   metadataBase: new URL("https://cvstacked.com"),
+
   alternates: {
     canonical: "/",
   },
+
   robots: {
     index: true,
     follow: true,
@@ -58,6 +68,7 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+
   openGraph: {
     type: "website",
     siteName: "CVStacked",
@@ -66,6 +77,7 @@ export const metadata: Metadata = {
       "Create, customize, and optimize your resume with CVStacked's AI-powered resume builder.",
     url: "https://cvstacked.com",
   },
+
   twitter: {
     card: "summary_large_image",
     title: "CVStacked — AI Resume Builder",
@@ -74,24 +86,28 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+interface RootLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
+        <ClerkProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TooltipProvider>{children}</TooltipProvider>
 
-          <Footer />
-        </ThemeProvider>
+            <Toaster />
+            <Footer />
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
 }
-
-// https://www.recraft.ai/

@@ -18,3 +18,5 @@ export const metadata: Metadata = {
 const AboutPage = () => <AboutPageSection />;
 
 export default AboutPage;
+
+// https://www.recraft.ai/
