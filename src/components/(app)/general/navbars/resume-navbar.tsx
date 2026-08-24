@@ -5,8 +5,8 @@ import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { CVStackedLogo } from "@/components/brand/cv-stacked-logo";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "../themes/mode-toggler";
 
@@ -29,6 +29,10 @@ const AIResumeNavbar = () => {
     {
       label: "AI Resume",
       href: "/ai-resume-optimizer",
+    },
+    {
+      label: "About",
+      href: "/about",
     },
     {
       label: "Pricing",
