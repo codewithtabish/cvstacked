@@ -162,7 +162,7 @@ export interface ResumeData {
   // USER-CUSTOMIZABLE RESUME APPEARANCE
   // ============================================================
 
-  templateId: ResumeTemplate;
+  templateId: string;
   themeId: string;
   fontFamilyId: string;
   typographyScale: string;

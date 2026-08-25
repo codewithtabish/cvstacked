@@ -273,7 +273,9 @@ const collapsedListeners = new Set<() => void>();
 
 function subscribeCollapsed(onChange: () => void) {
   collapsedListeners.add(onChange);
+
   window.addEventListener("storage", onChange);
+
   return () => {
     collapsedListeners.delete(onChange);
     window.removeEventListener("storage", onChange);
@@ -290,6 +292,7 @@ function getCollapsedServerSnapshot() {
 
 function setCollapsedStore(next: boolean) {
   window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+
   collapsedListeners.forEach((listener) => listener());
 }
 
@@ -319,6 +322,7 @@ function AppSidebarContent() {
   );
 
   const listRef = useRef<HTMLUListElement>(null);
+
   const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
 
   const [marker, setMarker] = useState({
@@ -332,21 +336,27 @@ function AppSidebarContent() {
   };
 
   const isActive = (item: NavItem) => {
-    if (item.exact) return pathname === item.href;
+    if (item.exact) {
+      return pathname === item.href;
+    }
+
     return pathname?.startsWith(item.href) ?? false;
   };
 
-  // Precise active marker calculation
   useLayoutEffect(() => {
     const activeItem = NAV_ITEMS.find(isActive);
+
     const activeElement = activeItem ? itemRefs.current.get(activeItem.href) : null;
 
     if (!activeElement || !listRef.current) {
-      setMarker((prev) => ({ ...prev, ready: false }));
+      setMarker((prev) => ({
+        ...prev,
+        ready: false,
+      }));
+
       return;
     }
 
-    // Use offsetTop relative to the list for perfect positioning
     const top = activeElement.offsetTop;
     const height = activeElement.offsetHeight;
 
@@ -369,12 +379,14 @@ function AppSidebarContent() {
       {/* Ambient background */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-72 w-72 rounded-full bg-primary/6 blur-3xl dark:bg-primary/9" />
+
         <div className="absolute top-1/3 -right-40 h-80 w-80 rounded-full bg-primary/[0.035] blur-3xl dark:bg-primary/6" />
+
         <div className="absolute bottom-0 left-0 h-64 w-full bg-linear-to-t from-primary/[0.035] to-transparent" />
       </div>
 
       {/* Brand */}
-      <div className="relative flex h-[76px] shrink-0 items-center border-b border-sidebar-border/80 px-4">
+      <div className="relative flex h-[68px] shrink-0 items-center border-b border-sidebar-border/80 px-4">
         <Link
           href="/app"
           aria-label="CVStacked workspace"
@@ -385,15 +397,17 @@ function AppSidebarContent() {
         >
           <span
             className={cn(
-              "relative flex h-10 w-10 shrink-0 items-center justify-center",
+              "relative flex h-9 w-9 shrink-0 items-center justify-center",
               "rounded-xl border border-primary/15",
               "bg-linear-to-br from-primary/10 via-primary/5 to-transparent",
               "shadow-sm transition-all duration-300",
               "group-hover/brand:border-primary/30",
-              "group-hover/brand:shadow-[0_0_24px_-10px] group-hover/brand:shadow-primary/40",
+              "group-hover/brand:shadow-[0_0_24px_-10px]",
+              "group-hover/brand:shadow-primary/40",
             )}
           >
             <span className="absolute inset-0 rounded-xl bg-primary/6 blur-md" />
+
             <span className="relative text-sm font-bold tracking-tight text-primary">CV</span>
           </span>
 
@@ -404,6 +418,7 @@ function AppSidebarContent() {
             )}
           >
             <span className="truncate text-[15px] font-semibold tracking-[-0.02em]">CVStacked</span>
+
             <span className="mt-0.5 truncate text-[10px] font-medium tracking-[0.16em] text-muted-foreground uppercase">
               Resume workspace
             </span>
@@ -420,7 +435,7 @@ function AppSidebarContent() {
             "absolute top-1/2 -right-3.5 z-20 flex h-7 w-7",
             "-translate-y-1/2 items-center justify-center",
             "rounded-full border border-sidebar-border",
-            "bg-sidebar shadow-sm text-muted-foreground",
+            "bg-sidebar text-muted-foreground shadow-sm",
             "transition-all duration-200",
             "hover:border-primary/30 hover:bg-sidebar-accent hover:text-primary",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -436,7 +451,11 @@ function AppSidebarContent() {
 
       {/* Workspace label */}
       <div
-        className={cn("relative px-5 pt-6 pb-3 transition-all duration-300", collapsed && "px-0")}
+        className={cn(
+          "relative shrink-0 px-5 pt-5 pb-2",
+          "transition-all duration-300",
+          collapsed && "px-0",
+        )}
       >
         <div
           className={cn(
@@ -447,14 +466,15 @@ function AppSidebarContent() {
           <span className="text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
             Workspace
           </span>
+
           <span className="h-px flex-1 bg-linear-to-r from-border/80 to-transparent" />
         </div>
       </div>
 
       {/* Navigation */}
-      <nav aria-label="CVStacked workspace navigation" className="relative flex-1 px-3">
-        <ul ref={listRef} className="relative flex flex-col gap-1">
-          {/* Active background pill */}
+      <nav aria-label="CVStacked workspace navigation" className="relative min-h-0 flex-1 px-3">
+        <ul ref={listRef} className="relative flex flex-col gap-0.5">
+          {/* Active background */}
           <div
             aria-hidden="true"
             className={cn(
@@ -470,7 +490,7 @@ function AppSidebarContent() {
             }}
           />
 
-          {/* Active left indicator bar */}
+          {/* Active indicator */}
           <div
             aria-hidden="true"
             className={cn(
@@ -493,16 +513,19 @@ function AppSidebarContent() {
             return (
               <li
                 key={item.href}
-                ref={(el) => {
-                  if (el) itemRefs.current.set(item.href, el);
-                  else itemRefs.current.delete(item.href);
+                ref={(element) => {
+                  if (element) {
+                    itemRefs.current.set(item.href, element);
+                  } else {
+                    itemRefs.current.delete(item.href);
+                  }
                 }}
               >
                 <Link
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative flex min-h-12 items-center rounded-xl px-3",
+                    "group relative flex min-h-11 items-center rounded-xl px-3",
                     "transition-all duration-200",
                     collapsed ? "justify-center" : "gap-3",
                     active
@@ -510,10 +533,10 @@ function AppSidebarContent() {
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                   )}
                 >
-                  {/* Icon container */}
+                  {/* Icon */}
                   <span
                     className={cn(
-                      "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                      "relative flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-lg",
                       "transition-all duration-200",
                       active
                         ? "bg-primary/12 text-primary"
@@ -522,10 +545,12 @@ function AppSidebarContent() {
                   >
                     <Icon
                       className={cn(
-                        "h-[18px] w-[18px] transition-transform duration-200",
+                        "h-[18px] w-[18px]",
+                        "transition-transform duration-200",
                         "group-hover:scale-[1.07]",
                       )}
                     />
+
                     {active && (
                       <span className="absolute inset-0 rounded-lg bg-primary/10 blur-md" />
                     )}
@@ -542,6 +567,7 @@ function AppSidebarContent() {
                     <span className="truncate text-[13px] font-medium leading-tight">
                       {item.label}
                     </span>
+
                     <span
                       className={cn(
                         "mt-0.5 truncate text-[10px] leading-tight",
@@ -574,12 +600,13 @@ function AppSidebarContent() {
                         "bg-popover/95 px-3 py-2",
                         "text-xs text-popover-foreground",
                         "shadow-xl backdrop-blur-md",
-                        "translate-x-[-6px] scale-95 opacity-0",
+                        "-translate-x-1.5 scale-95 opacity-0",
                         "transition-all duration-150 ease-out",
                         "group-hover:translate-x-0 group-hover:scale-100 group-hover:opacity-100",
                       )}
                     >
                       <span className="block whitespace-nowrap font-medium">{item.label}</span>
+
                       <span className="mt-0.5 block whitespace-nowrap text-[10px] text-muted-foreground">
                         {item.description}
                       </span>
@@ -595,11 +622,11 @@ function AppSidebarContent() {
       {/* AI Callout */}
       <div
         className={cn(
-          "relative mx-3 mb-3 overflow-hidden rounded-xl",
+          "relative mx-3 mb-2 shrink-0 overflow-hidden rounded-xl",
           "border border-primary/12",
           "bg-linear-to-br from-primary/10 via-primary/4 to-transparent",
           "transition-all duration-300",
-          collapsed ? "h-12" : "h-auto p-3.5",
+          collapsed ? "h-11" : "h-auto p-3",
         )}
       >
         <div
@@ -624,12 +651,14 @@ function AppSidebarContent() {
             )}
           >
             <p className="text-[11px] font-semibold tracking-tight">Build a better resume</p>
+
             <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
               Use AI to tailor your resume for your next opportunity.
             </p>
+
             <Link
               href="/app/ai-optimizer"
-              className="mt-2 inline-flex items-center text-[10px] font-medium text-primary transition-colors hover:text-primary/80"
+              className="mt-1.5 inline-flex items-center text-[10px] font-medium text-primary transition-colors hover:text-primary/80"
             >
               Try AI Optimizer
               <IconChevronRight className="ml-0.5 h-3 w-3" />
@@ -641,7 +670,8 @@ function AppSidebarContent() {
       {/* Footer */}
       <div
         className={cn(
-          "relative flex items-center gap-3 border-t border-sidebar-border/80 p-3",
+          "relative flex shrink-0 items-center gap-3",
+          "border-t border-sidebar-border/80 p-3",
           collapsed ? "flex-col" : "flex-row justify-between",
         )}
       >
@@ -654,6 +684,7 @@ function AppSidebarContent() {
           <p className="truncate text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
             CVStacked
           </p>
+
           <p className="mt-0.5 text-[9px] text-muted-foreground/55">Your career, stacked better.</p>
         </div>
 
@@ -670,9 +701,11 @@ function AppSidebarContent() {
 function AppSidebarSkeleton() {
   return (
     <aside className="relative sticky top-0 flex h-screen w-[272px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex h-[76px] shrink-0 items-center border-b border-sidebar-border/80 px-4">
+      {/* Brand */}
+      <div className="flex h-[68px] shrink-0 items-center border-b border-sidebar-border/80 px-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 animate-pulse rounded-xl bg-sidebar-accent" />
+          <div className="h-9 w-9 animate-pulse rounded-xl bg-sidebar-accent" />
+
           <div className="space-y-1.5">
             <div className="h-3.5 w-20 animate-pulse rounded bg-sidebar-accent" />
             <div className="h-2.5 w-28 animate-pulse rounded bg-sidebar-accent" />
@@ -680,16 +713,19 @@ function AppSidebarSkeleton() {
         </div>
       </div>
 
-      <div className="px-5 pt-6 pb-3">
+      {/* Workspace */}
+      <div className="px-5 pt-5 pb-2">
         <div className="h-2.5 w-20 animate-pulse rounded bg-sidebar-accent" />
       </div>
 
-      <nav className="flex-1 px-3">
-        <ul className="space-y-1">
+      {/* Navigation */}
+      <nav className="min-h-0 flex-1 px-3">
+        <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => (
             <li key={item.href}>
-              <div className="flex min-h-12 items-center gap-3 rounded-xl px-3">
-                <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-sidebar-accent" />
+              <div className="flex min-h-11 items-center gap-3 rounded-xl px-3">
+                <div className="h-8.5 w-8.5 shrink-0 animate-pulse rounded-lg bg-sidebar-accent" />
+
                 <div className="space-y-1.5">
                   <div className="h-3 w-24 animate-pulse rounded bg-sidebar-accent" />
                   <div className="h-2 w-32 animate-pulse rounded bg-sidebar-accent" />
@@ -700,13 +736,16 @@ function AppSidebarSkeleton() {
         </ul>
       </nav>
 
-      <div className="mx-3 mb-3 h-[88px] animate-pulse rounded-xl bg-sidebar-accent" />
+      {/* AI */}
+      <div className="mx-3 mb-2 h-[78px] shrink-0 animate-pulse rounded-xl bg-sidebar-accent" />
 
-      <div className="flex items-center justify-between border-t border-sidebar-border/80 p-3">
+      {/* Footer */}
+      <div className="flex shrink-0 items-center justify-between border-t border-sidebar-border/80 p-3">
         <div className="space-y-1.5">
           <div className="h-2.5 w-16 animate-pulse rounded bg-sidebar-accent" />
           <div className="h-2 w-24 animate-pulse rounded bg-sidebar-accent" />
         </div>
+
         <div className="h-8 w-8 animate-pulse rounded-lg bg-sidebar-accent" />
       </div>
     </aside>

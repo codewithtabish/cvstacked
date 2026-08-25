@@ -1,7 +1,5 @@
 "use client";
 
-import TemplateThree from "@/components/(app)/general/templates/template-three";
-import { seniorSoftwareEngineerResume } from "@/data/resume";
 import { useClerk } from "@clerk/nextjs";
 
 export default function AppPage() {
@@ -13,7 +11,7 @@ export default function AppPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center">
-      <TemplateThree resume={seniorSoftwareEngineerResume} />
+      {/* <TemplateThree resume={seniorSoftwareEngineerResume} /> */}
       <button
         type="button"
         onClick={handleSignOut}
