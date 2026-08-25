@@ -611,7 +611,7 @@ export function TemplateOne({ resume, id = "resume-page" }: ModernTemplateProps)
         )}
 
         {/* ======================================================
-            PROJECTS
+            PROJECTS  ← UPDATED (Start/End Date + Live URL + GitHub)
             ====================================================== */}
 
         {resume.projects.length > 0 && (
@@ -635,18 +635,36 @@ export function TemplateOne({ resume, id = "resume-page" }: ModernTemplateProps)
                     backgroundColor: "#FFFFFF",
                   }}
                 >
-                  <h3
+                  {/* Name + Date */}
+                  <div
                     style={{
-                      margin: 0,
-                      color: colors.text,
-                      fontSize: typography.body,
-                      fontWeight: 800,
-                      lineHeight: 1.35,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: "10px",
                     }}
                   >
-                    {project.name}
-                  </h3>
+                    <h3
+                      style={{
+                        margin: 0,
+                        color: colors.text,
+                        fontSize: typography.body,
+                        fontWeight: 800,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {project.name}
+                    </h3>
 
+                    <DateRange
+                      startDate={project.startDate}
+                      endDate={project.endDate}
+                      color={colors.textSubtle}
+                      fontSize={typography.small}
+                    />
+                  </div>
+
+                  {/* Role */}
                   {project.role && (
                     <p
                       style={{
@@ -660,6 +678,7 @@ export function TemplateOne({ resume, id = "resume-page" }: ModernTemplateProps)
                     </p>
                   )}
 
+                  {/* Description */}
                   <p
                     style={{
                       ...bodyTextStyle,
@@ -669,6 +688,7 @@ export function TemplateOne({ resume, id = "resume-page" }: ModernTemplateProps)
                     {project.description}
                   </p>
 
+                  {/* Technologies */}
                   {project.technologies && project.technologies.length > 0 && (
                     <p
                       style={{
@@ -682,6 +702,7 @@ export function TemplateOne({ resume, id = "resume-page" }: ModernTemplateProps)
                     </p>
                   )}
 
+                  {/* Achievements */}
                   {project.achievements && project.achievements.length > 0 && (
                     <BulletList
                       items={project.achievements}
@@ -689,6 +710,43 @@ export function TemplateOne({ resume, id = "resume-page" }: ModernTemplateProps)
                       fontSize={typography.small}
                       lineHeight={1.45}
                     />
+                  )}
+
+                  {/* Live URL + GitHub */}
+                  {(project.url || project.github) && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px 12px",
+                        marginTop: "7px",
+                      }}
+                    >
+                      {project.url && (
+                        <span
+                          style={{
+                            color: colors.accent,
+                            fontSize: typography.small,
+                            fontWeight: 600,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {project.url}
+                        </span>
+                      )}
+                      {project.github && (
+                        <span
+                          style={{
+                            color: colors.accent,
+                            fontSize: typography.small,
+                            fontWeight: 600,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {project.github}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}

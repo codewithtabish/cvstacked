@@ -29,16 +29,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadDraft, saveDraft } from "@/lib/resume-draft";
 import type { ResumeData } from "@/types/resume";
 
+import CertificationsSectionEditor from "./Certifications-sectioneditor";
 import EducationEditorSection from "./education-section-editor";
 import ExperienceSectionEditor, {
   type ExperienceValidationErrors,
   validateExperience,
 } from "./experience-section-editor";
+import LanguagesSectionEditor from "./language-section-editor";
 import {
   PersonalSectionEditor,
   type PersonalValidationErrors,
   validatePersonalInfo,
 } from "./personalsectioneditor";
+import {
+  ProjectSectionEditor,
+  type ProjectSectionValidationErrors,
+  validateProjects,
+} from "./project-section-editor";
 import { ResumePreview } from "./resume-previewer";
 import SkillsSectionEditor, {
   type SkillsValidationErrors,
@@ -169,6 +176,7 @@ function createEmptyResume(templateId: string): ResumeData {
     themeId: "blue",
     fontFamilyId: "inter",
     typographyScale: "comfortable",
+
     personal: {
       firstName: "",
       lastName: "",
@@ -183,13 +191,19 @@ function createEmptyResume(templateId: string): ResumeData {
       github: "",
       portfolio: "",
     },
+
     summary: "",
     experience: [],
     education: [],
     skills: [],
     projects: [],
     certifications: [],
+
+    // Keep languages completely empty initially.
+    // The language editor will create a valid proficiency value
+    // when the user adds a language.
     languages: [],
+
     awards: [],
     publications: [],
     volunteer: [],
@@ -214,12 +228,15 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
 
   return {
     ...resume,
+
     id: resume.id ?? crypto.randomUUID(),
     title: resume.title ?? "Untitled Resume",
     templateId,
+
     themeId: resume.themeId ?? "blue",
     fontFamilyId: resume.fontFamilyId ?? "inter",
     typographyScale: resume.typographyScale ?? "comfortable",
+
     personal: {
       firstName: personal.firstName ?? "",
       lastName: personal.lastName ?? "",
@@ -234,13 +251,49 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
       github: personal.github ?? "",
       portfolio: personal.portfolio ?? "",
     },
+
     summary: resume.summary ?? "",
     experience: resume.experience ?? [],
     education: resume.education ?? [],
     skills: resume.skills ?? [],
     projects: resume.projects ?? [],
     certifications: resume.certifications ?? [],
-    languages: resume.languages ?? [],
+
+    /*
+     * IMPORTANT:
+     *
+     * Do not map language.proficiency to "".
+     *
+     * ResumeLanguage.proficiency is a strict union:
+     *
+     * "elementary"
+     * "conversational"
+     * "professional"
+     * "fluent"
+     * "native"
+     *
+     * Existing drafts should therefore be cleaned here.
+     */
+
+    languages: (resume.languages ?? []).map((language) => {
+      const validProficiencies = [
+        "elementary",
+        "conversational",
+        "professional",
+        "fluent",
+        "native",
+      ] as const;
+
+      const proficiency = validProficiencies.includes(language.proficiency)
+        ? language.proficiency
+        : "professional";
+
+      return {
+        ...language,
+        proficiency,
+      };
+    }),
+
     awards: resume.awards ?? [],
     publications: resume.publications ?? [],
     volunteer: resume.volunteer ?? [],
@@ -329,25 +382,25 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
   const [view, setView] = useState<"editor" | "preview">("editor");
 
   const [personalErrors, setPersonalErrors] = useState<PersonalValidationErrors>({});
+
   const [personalValidationStarted, setPersonalValidationStarted] = useState(false);
 
   const [experienceErrors, setExperienceErrors] = useState<ExperienceValidationErrors>({});
+
   const [experienceValidationStarted, setExperienceValidationStarted] = useState(false);
 
   const [educationValidationStarted, setEducationValidationStarted] = useState(false);
 
   const [skillsErrors, setSkillsErrors] = useState<SkillsValidationErrors>({});
+
   const [skillsValidationStarted, setSkillsValidationStarted] = useState(false);
 
+  const [projectErrors, setProjectErrors] = useState<ProjectSectionValidationErrors>({});
+
+  const [projectValidationStarted, setProjectValidationStarted] = useState(false);
+
   /**
-   * IMPORTANT:
-   *
    * editorDraft is the complete resume used by the section editors.
-   * It must stay synchronized with the real resume, including:
-   *
-   * - themeId
-   * - fontFamilyId
-   * - typographyScale
    */
   const [editorDraft, setEditorDraft] = useState<ResumeData>(() =>
     getInitialResume(templateId, initialResume),
@@ -375,17 +428,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
   const skillsComplete = Object.keys(validateSkills(resume.skills ?? [])).length === 0;
 
+  const projectsComplete = Object.keys(validateProjects(resume.projects ?? [])).length === 0;
+
   /**
    * Handles changes from section editors AND the Customize dialog.
-   *
-   * The important fix is that appearance properties are now preserved:
-   *
-   * - themeId
-   * - fontFamilyId
-   * - typographyScale
-   *
-   * Previously these values were lost because the switch below only
-   * copied the currently active section.
    */
   const onChange = (next: ResumeData) => {
     const normalizedNext = normalizeResume(next, templateId);
@@ -397,27 +443,15 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
     /**
      * Update the real resume.
-     *
-     * We preserve the section-specific update behavior, but ALSO
-     * preserve global resume properties such as appearance.
      */
     setResume((currentResume) => {
       const updatedResume: ResumeData = {
         ...currentResume,
 
-        /**
-         * Global properties.
-         *
-         * These are what the Customize dialog changes.
-         */
         title: normalizedNext.title,
         themeId: normalizedNext.themeId,
         fontFamilyId: normalizedNext.fontFamilyId,
         typographyScale: normalizedNext.typographyScale,
-
-        /**
-         * Keep template identity stable.
-         */
         templateId,
       };
 
@@ -525,6 +559,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     if (activeSection.id === "skills" && skillsValidationStarted) {
       setSkillsErrors(validateSkills(normalizedNext.skills ?? []));
     }
+
+    if (activeSection.id === "projects" && projectValidationStarted) {
+      setProjectErrors(validateProjects(normalizedNext.projects ?? []));
+    }
   };
 
   /**
@@ -571,6 +609,16 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
       return Object.keys(errors).length === 0;
     }
 
+    if (activeSection.id === "projects") {
+      setProjectValidationStarted(true);
+
+      const errors = validateProjects(resume.projects ?? []);
+
+      setProjectErrors(errors);
+
+      return Object.keys(errors).length === 0;
+    }
+
     return true;
   };
 
@@ -585,6 +633,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
     setSkillsValidationStarted(false);
     setSkillsErrors({});
+
+    setProjectValidationStarted(false);
+    setProjectErrors({});
   };
 
   /**
@@ -599,11 +650,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     resetValidation();
 
     /**
-     * IMPORTANT:
-     *
      * Use the latest complete resume.
-     *
-     * This includes customization changes.
      */
     setEditorDraft(resume);
   };
@@ -676,6 +723,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
       case "skills":
         return skillsComplete;
 
+      case "projects":
+        return projectsComplete;
+
       default:
         return true;
     }
@@ -698,13 +748,11 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
           <TabsList className="h-9">
             <TabsTrigger value="editor" className="gap-1.5 px-3">
               <Pencil className="h-3.5 w-3.5" />
-
               <span className="hidden sm:inline">Editor</span>
             </TabsTrigger>
 
             <TabsTrigger value="preview" className="gap-1.5 px-3">
               <Eye className="h-3.5 w-3.5" />
-
               <span className="hidden sm:inline">Preview</span>
             </TabsTrigger>
           </TabsList>
@@ -943,6 +991,8 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                       onExperienceValidate={setExperienceErrors}
                       skillsErrors={skillsErrors}
                       onSkillsValidate={setSkillsErrors}
+                      projectErrors={projectErrors}
+                      onProjectValidate={setProjectErrors}
                     />
 
                     <EditorNavigation
@@ -974,6 +1024,8 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                     onExperienceValidate={setExperienceErrors}
                     skillsErrors={skillsErrors}
                     onSkillsValidate={setSkillsErrors}
+                    projectErrors={projectErrors}
+                    onProjectValidate={setProjectErrors}
                   />
 
                   <EditorNavigation
@@ -1010,12 +1062,18 @@ interface SectionContentProps {
   resume: ResumeData;
   emptyResume: ResumeData;
   onChange: (next: ResumeData) => void;
+
   personalErrors: PersonalValidationErrors;
   onPersonalValidate: (errors: PersonalValidationErrors) => void;
+
   experienceErrors: ExperienceValidationErrors;
   onExperienceValidate: (errors: ExperienceValidationErrors) => void;
+
   skillsErrors: SkillsValidationErrors;
   onSkillsValidate: (errors: SkillsValidationErrors) => void;
+
+  projectErrors: ProjectSectionValidationErrors;
+  onProjectValidate: (errors: ProjectSectionValidationErrors) => void;
 }
 
 function SectionContent({
@@ -1030,6 +1088,8 @@ function SectionContent({
   onExperienceValidate,
   skillsErrors,
   onSkillsValidate,
+  projectErrors,
+  onProjectValidate,
 }: SectionContentProps) {
   void emptyResume;
 
@@ -1087,11 +1147,16 @@ function SectionContent({
               onValidate={onSkillsValidate}
             />
           ) : activeSection.id === "projects" ? (
-            <EmptySectionState
-              icon={Lightbulb}
-              title="Projects editor coming soon"
-              description="The projects editor has not been created yet. Your projects data is preserved, and this section will be available once the editor is added."
+            <ProjectSectionEditor
+              resume={resume}
+              onChange={onChange}
+              errors={projectErrors}
+              onValidate={onProjectValidate}
             />
+          ) : activeSection.id === "certifications" ? (
+            <CertificationsSectionEditor resume={resume} onChange={onChange} />
+          ) : activeSection.id === "languages" ? (
+            <LanguagesSectionEditor resume={resume} onChange={onChange} />
           ) : (
             <EmptySectionState
               icon={ActiveIcon}

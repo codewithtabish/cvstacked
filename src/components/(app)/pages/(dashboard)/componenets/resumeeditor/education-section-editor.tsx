@@ -17,12 +17,11 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { z } from "zod";
 
-import type { ResumeData } from "@/types/resume";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { ResumeData } from "@/types/resume";
 
 type ResumeEducation = ResumeData["education"][number];
 
@@ -125,6 +124,7 @@ export const educationSchema = z.array(educationItemSchema);
 
 export type EducationValidationErrors = {
   education?: string;
+
   items?: Record<
     string,
     {
@@ -145,7 +145,13 @@ export function validateEducation(education: ResumeData["education"]): Education
     return {};
   }
 
-  // One fully blank entry = user has not started yet → allow continue
+  /*
+   * A completely blank single education entry means
+   * the user has not started yet.
+   *
+   * This is intentionally valid so the user can continue
+   * without being forced to add education.
+   */
   if (
     education.length === 1 &&
     !education[0].degree.trim() &&
@@ -162,7 +168,9 @@ export function validateEducation(education: ResumeData["education"]): Education
     return {};
   }
 
-  const errors: EducationValidationErrors = { items: {} };
+  const errors: EducationValidationErrors = {
+    items: {},
+  };
 
   for (const issue of result.error.issues) {
     const [index, field] = issue.path;
@@ -173,7 +181,10 @@ export function validateEducation(education: ResumeData["education"]): Education
     }
 
     const item = education[index];
-    if (!item || field === undefined) continue;
+
+    if (!item || field === undefined) {
+      continue;
+    }
 
     const fieldName = String(field);
 
@@ -188,16 +199,40 @@ export function validateEducation(education: ResumeData["education"]): Education
       fieldName === "description"
     ) {
       errors.items![item.id] ??= {};
+
       const itemErrors = errors.items![item.id]!;
 
-      if (fieldName === "degree") itemErrors.degree ??= issue.message;
-      if (fieldName === "institution") itemErrors.institution ??= issue.message;
-      if (fieldName === "fieldOfStudy") itemErrors.fieldOfStudy ??= issue.message;
-      if (fieldName === "location") itemErrors.location ??= issue.message;
-      if (fieldName === "startDate") itemErrors.startDate ??= issue.message;
-      if (fieldName === "endDate") itemErrors.endDate ??= issue.message;
-      if (fieldName === "grade") itemErrors.grade ??= issue.message;
-      if (fieldName === "description") itemErrors.description ??= issue.message;
+      if (fieldName === "degree") {
+        itemErrors.degree ??= issue.message;
+      }
+
+      if (fieldName === "institution") {
+        itemErrors.institution ??= issue.message;
+      }
+
+      if (fieldName === "fieldOfStudy") {
+        itemErrors.fieldOfStudy ??= issue.message;
+      }
+
+      if (fieldName === "location") {
+        itemErrors.location ??= issue.message;
+      }
+
+      if (fieldName === "startDate") {
+        itemErrors.startDate ??= issue.message;
+      }
+
+      if (fieldName === "endDate") {
+        itemErrors.endDate ??= issue.message;
+      }
+
+      if (fieldName === "grade") {
+        itemErrors.grade ??= issue.message;
+      }
+
+      if (fieldName === "description") {
+        itemErrors.description ??= issue.message;
+      }
     }
   }
 
@@ -213,7 +248,7 @@ export function isEducationValid(education: ResumeData["education"]): boolean {
 }
 
 /* ============================================================
-   EMPTY ITEM
+   EMPTY EDUCATION
 ============================================================ */
 
 function createEmptyEducation(): ResumeEducation {
@@ -232,13 +267,16 @@ function createEmptyEducation(): ResumeEducation {
 }
 
 /* ============================================================
-   FORMAT DATE FOR PREVIEW (YYYY-MM → readable)
+   DATE FORMATTER
 ============================================================ */
 
 function formatMonthYear(value?: string): string {
-  if (!value || !/^\d{4}-\d{2}$/.test(value)) return value || "";
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) {
+    return value || "";
+  }
 
   const [year, month] = value.split("-");
+
   const date = new Date(Number(year), Number(month) - 1, 1);
 
   return date.toLocaleDateString("en-US", {
@@ -253,6 +291,7 @@ function formatMonthYear(value?: string): string {
 
 interface EducationEditorSectionProps {
   resume: ResumeData;
+
   onUpdate: (education: ResumeData["education"]) => void;
 }
 
@@ -264,92 +303,204 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
   const educationFromResume = resume.education ?? [];
 
   /*
-   * Always show at least one education.
-   * First visit: empty form is already open — no click needed.
+   * IMPORTANT FIX
+   *
+   * This object is created ONCE.
+   *
+   * Previously createEmptyEducation() was called directly
+   * during render, which generated a new ID on every render.
+   *
+   * That caused:
+   *
+   * editingId !== education[0].id
+   *
+   * after the first render/update, which collapsed the form.
+   *
+   * Keeping the object in state gives it a stable ID.
    */
-  const education = educationFromResume.length > 0 ? educationFromResume : [createEmptyEducation()];
+  const [initialEmptyEducation] = useState<ResumeEducation>(() => createEmptyEducation());
 
-  const [editingId, setEditingId] = useState<string | null>(() =>
-    educationFromResume.length === 0 ? (education[0]?.id ?? null) : null,
-  );
+  /*
+   * If the resume has no education yet, show the stable
+   * local empty education item.
+   *
+   * Once the user starts editing it, onUpdate persists it
+   * into resume.education.
+   */
+  const education = educationFromResume.length > 0 ? educationFromResume : [initialEmptyEducation];
+
+  /*
+   * Initial UX:
+   *
+   * First visit:
+   *   → education form OPEN
+   *
+   * Existing resume:
+   *   → all education cards CLOSED
+   */
+  const [editingId, setEditingId] = useState<string | null>(() => {
+    if (educationFromResume.length === 0) {
+      return initialEmptyEducation.id;
+    }
+
+    return null;
+  });
 
   const [hasAttemptedValidation, setHasAttemptedValidation] = useState(false);
+
   const [errors, setErrors] = useState<EducationValidationErrors>({});
+
+  /* ============================================================
+     VALIDATION
+  ============================================================ */
 
   const runValidation = (next: ResumeData["education"]) => {
     const nextErrors = validateEducation(next);
+
     setErrors(nextErrors);
+
     return Object.keys(nextErrors).length === 0;
   };
 
+  /* ============================================================
+     UPDATE EDUCATION LIST
+  ============================================================ */
+
   const updateEducationList = (next: ResumeData["education"]) => {
     onUpdate(next);
+
     if (hasAttemptedValidation) {
       runValidation(next);
     }
   };
 
+  /* ============================================================
+     UPDATE EDUCATION
+  ============================================================ */
+
   const updateEducation = (id: string, updates: Partial<ResumeEducation>) => {
+    /*
+     * Use the persisted resume data when available.
+     *
+     * Otherwise use the stable initial empty item.
+     */
     const base = educationFromResume.length > 0 ? educationFromResume : education;
 
-    const next = base.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    const next = base.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            ...updates,
+          }
+        : item,
+    );
 
     updateEducationList(next);
   };
+
+  /* ============================================================
+     ADD EDUCATION
+  ============================================================ */
 
   const addEducation = () => {
     const newEducation = createEmptyEducation();
+
     const base = educationFromResume.length > 0 ? educationFromResume : education;
+
     const next = [...base, newEducation];
+
     updateEducationList(next);
+
+    /*
+     * Close any existing editor and immediately open
+     * the newly created education.
+     */
     setEditingId(newEducation.id);
   };
 
+  /* ============================================================
+     REMOVE EDUCATION
+  ============================================================ */
+
   const removeEducation = (id: string) => {
     const base = educationFromResume.length > 0 ? educationFromResume : education;
+
     const next = base.filter((item) => item.id !== id);
 
+    /*
+     * Always leave the user with one education form.
+     */
     if (next.length === 0) {
-      const empty = createEmptyEducation();
-      updateEducationList([empty]);
-      setEditingId(empty.id);
+      const emptyEducation = createEmptyEducation();
+
+      updateEducationList([emptyEducation]);
+
+      setEditingId(emptyEducation.id);
+
       return;
     }
 
     updateEducationList(next);
+
+    /*
+     * If the deleted education was currently open,
+     * close the editor.
+     */
     if (editingId === id) {
       setEditingId(null);
     }
   };
 
+  /* ============================================================
+     REORDER
+  ============================================================ */
+
   const moveEducation = (index: number, direction: "up" | "down") => {
     const base = educationFromResume.length > 0 ? educationFromResume : education;
+
     const newIndex = direction === "up" ? index - 1 : index + 1;
 
-    if (newIndex < 0 || newIndex >= base.length) return;
+    if (newIndex < 0 || newIndex >= base.length) {
+      return;
+    }
 
     const updated = [...base];
+
     const current = updated[index];
     const target = updated[newIndex];
-    if (!current || !target) return;
+
+    if (!current || !target) {
+      return;
+    }
 
     updated[index] = target;
     updated[newIndex] = current;
+
     updateEducationList(updated);
   };
 
+  /*
+   * Reordering/deleting only makes sense when there are
+   * multiple persisted education entries.
+   */
   const canReorder = educationFromResume.length > 1;
+
   const canDelete = educationFromResume.length > 1;
 
   return (
     <div className="w-full space-y-6">
-      {/* HEADER */}
+      {/* ======================================================
+          SECTION HEADER
+      ====================================================== */}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-muted/40">
             <BookOpen className="h-5 w-5 text-muted-foreground" />
           </div>
+
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Education</h2>
+
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
             Add your degrees, schools, universities, and other educational background.
           </p>
@@ -361,12 +512,19 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
         </Button>
       </div>
 
-      {/* LIST — first form always open when empty */}
+      {/* ======================================================
+          EDUCATION LIST
+      ====================================================== */}
+
       <div className="space-y-4">
         {education.map((item, index) => {
-          const isEditing =
-            editingId === item.id ||
-            (editingId === null && educationFromResume.length === 0 && index === 0);
+          /*
+           * Only the selected education is open.
+           *
+           * On first visit editingId is the stable empty
+           * education ID, so the complete form is visible.
+           */
+          const isEditing = editingId === item.id;
 
           const itemErrors = errors.items?.[item.id] ?? {};
 
@@ -375,25 +533,36 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
               key={item.id}
               className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm"
             >
-              {/* CARD HEADER */}
+              {/* ==================================================
+                  CARD HEADER
+              ================================================== */}
+
               <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-                <div className="text-muted-foreground">
-                  <GripVertical className="h-4 w-4" />
-                </div>
+                {canReorder && (
+                  <div className="text-muted-foreground">
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+                )}
 
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
                     <BookOpen className="h-4 w-4" />
                   </div>
+
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">
                       {item.degree?.trim() || "Untitled degree"}
                     </p>
+
                     <p className="truncate text-xs text-muted-foreground">
                       {item.institution?.trim() || "Institution not specified"}
                     </p>
                   </div>
                 </div>
+
+                {/* ==================================================
+                    REORDER CONTROLS
+                ================================================== */}
 
                 {canReorder && (
                   <div className="hidden items-center gap-0.5 sm:flex">
@@ -404,10 +573,11 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                       className="h-8 w-8 text-muted-foreground"
                       disabled={index === 0}
                       onClick={() => moveEducation(index, "up")}
-                      aria-label="Move up"
+                      aria-label="Move education up"
                     >
                       <ChevronUp className="h-4 w-4" />
                     </Button>
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -415,12 +585,16 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                       className="h-8 w-8 text-muted-foreground"
                       disabled={index === education.length - 1}
                       onClick={() => moveEducation(index, "down")}
-                      aria-label="Move down"
+                      aria-label="Move education down"
                     >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
+
+                {/* ==================================================
+                    EDIT / CLOSE
+                ================================================== */}
 
                 <Button
                   type="button"
@@ -428,10 +602,14 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                   size="icon"
                   className="h-8 w-8 text-muted-foreground"
                   onClick={() => setEditingId(isEditing ? null : item.id)}
-                  aria-label={isEditing ? "Close" : "Edit"}
+                  aria-label={isEditing ? "Close education editor" : "Edit education"}
                 >
                   {isEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
                 </Button>
+
+                {/* ==================================================
+                    DELETE
+                ================================================== */}
 
                 {canDelete && (
                   <Button
@@ -440,56 +618,72 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => removeEducation(item.id)}
-                    aria-label="Delete"
+                    aria-label="Delete education"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
               </div>
 
-              {/* PREVIEW */}
+              {/* ==================================================
+                  PREVIEW
+              ================================================== */}
+
               {!isEditing && (
                 <div className="px-5 py-5">
                   <div className="grid gap-5 sm:grid-cols-2">
                     {item.degree?.trim() ? (
                       <PreviewField label="Degree" value={item.degree} />
                     ) : null}
+
                     {item.fieldOfStudy?.trim() ? (
                       <PreviewField label="Field of Study" value={item.fieldOfStudy} />
                     ) : null}
+
                     {item.institution?.trim() ? (
                       <PreviewField label="Institution" value={item.institution} />
                     ) : null}
+
                     {item.location?.trim() ? (
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Location
                         </p>
+
                         <p className="mt-1 flex items-center gap-1.5 text-sm">
                           <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+
                           {item.location}
                         </p>
                       </div>
                     ) : null}
+
                     {item.grade?.trim() ? <PreviewField label="Grade" value={item.grade} /> : null}
+
                     {item.startDate?.trim() || item.endDate?.trim() || item.current ? (
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Dates
                         </p>
+
                         <p className="mt-1 flex items-center gap-1.5 text-sm">
                           <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+
                           {formatMonthYear(item.startDate) || "—"}
+
                           <span className="text-muted-foreground">—</span>
+
                           {item.current ? "Present" : formatMonthYear(item.endDate) || "—"}
                         </p>
                       </div>
                     ) : null}
+
                     {item.description?.trim() ? (
                       <div className="sm:col-span-2">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Description
                         </p>
+
                         <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                           {item.description}
                         </p>
@@ -507,22 +701,33 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                 </div>
               )}
 
-              {/* FORM — open by default for first empty education */}
+              {/* ==================================================
+                  EDUCATION FORM
+              ================================================== */}
+
               {isEditing && (
                 <div className="space-y-6 px-5 py-6">
+                  {/* ==================================================
+                      DEGREE
+                  ================================================== */}
+
                   <div className="space-y-2">
                     <Label htmlFor={`degree-${item.id}`}>
                       Degree <span className="text-destructive">*</span>
                     </Label>
+
                     <Input
                       id={`degree-${item.id}`}
                       value={item.degree}
                       placeholder="e.g. Bachelor of Science"
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        updateEducation(item.id, { degree: e.target.value })
+                        updateEducation(item.id, {
+                          degree: e.target.value,
+                        })
                       }
                       aria-invalid={Boolean(itemErrors.degree)}
                     />
+
                     {itemErrors.degree && (
                       <p className="text-xs font-medium text-destructive" role="alert">
                         {itemErrors.degree}
@@ -530,9 +735,14 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                     )}
                   </div>
 
+                  {/* ==================================================
+                      FIELD OF STUDY + INSTITUTION
+                  ================================================== */}
+
                   <div className="grid gap-5 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor={`field-${item.id}`}>Field of Study</Label>
+
                       <Input
                         id={`field-${item.id}`}
                         value={item.fieldOfStudy ?? ""}
@@ -543,11 +753,19 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                           })
                         }
                       />
+
+                      {itemErrors.fieldOfStudy && (
+                        <p className="text-xs font-medium text-destructive" role="alert">
+                          {itemErrors.fieldOfStudy}
+                        </p>
+                      )}
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor={`institution-${item.id}`}>
                         Institution <span className="text-destructive">*</span>
                       </Label>
+
                       <Input
                         id={`institution-${item.id}`}
                         value={item.institution}
@@ -559,6 +777,7 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                         }
                         aria-invalid={Boolean(itemErrors.institution)}
                       />
+
                       {itemErrors.institution && (
                         <p className="text-xs font-medium text-destructive" role="alert">
                           {itemErrors.institution}
@@ -567,11 +786,17 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                     </div>
                   </div>
 
+                  {/* ==================================================
+                      LOCATION + GRADE
+                  ================================================== */}
+
                   <div className="grid gap-5 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor={`location-${item.id}`}>Location</Label>
+
                       <div className="relative">
                         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
                         <Input
                           id={`location-${item.id}`}
                           value={item.location ?? ""}
@@ -584,24 +809,44 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                           }
                         />
                       </div>
+
+                      {itemErrors.location && (
+                        <p className="text-xs font-medium text-destructive" role="alert">
+                          {itemErrors.location}
+                        </p>
+                      )}
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor={`grade-${item.id}`}>Grade</Label>
+
                       <Input
                         id={`grade-${item.id}`}
                         value={item.grade ?? ""}
                         placeholder="e.g. 3.8 / 4.0"
                         onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                          updateEducation(item.id, { grade: e.target.value })
+                          updateEducation(item.id, {
+                            grade: e.target.value,
+                          })
                         }
                       />
+
+                      {itemErrors.grade && (
+                        <p className="text-xs font-medium text-destructive" role="alert">
+                          {itemErrors.grade}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* DATES — month calendar like Experience */}
+                  {/* ==================================================
+                      EDUCATION PERIOD
+                  ================================================== */}
+
                   <div className="space-y-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Label>Education Period</Label>
+
                       <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                         <input
                           type="checkbox"
@@ -619,10 +864,13 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                     </div>
 
                     <div className="grid gap-5 sm:grid-cols-2">
+                      {/* START DATE */}
+
                       <div className="space-y-2">
                         <Label htmlFor={`start-${item.id}`}>
                           Start Date <span className="text-destructive">*</span>
                         </Label>
+
                         <Input
                           id={`start-${item.id}`}
                           type="month"
@@ -634,6 +882,7 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                           }
                           aria-invalid={Boolean(itemErrors.startDate)}
                         />
+
                         {itemErrors.startDate && (
                           <p className="text-xs font-medium text-destructive" role="alert">
                             {itemErrors.startDate}
@@ -641,11 +890,14 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                         )}
                       </div>
 
+                      {/* END DATE */}
+
                       {!item.current && (
                         <div className="space-y-2">
                           <Label htmlFor={`end-${item.id}`}>
                             End Date <span className="text-destructive">*</span>
                           </Label>
+
                           <Input
                             id={`end-${item.id}`}
                             type="month"
@@ -657,6 +909,7 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                             }
                             aria-invalid={Boolean(itemErrors.endDate)}
                           />
+
                           {itemErrors.endDate && (
                             <p className="text-xs font-medium text-destructive" role="alert">
                               {itemErrors.endDate}
@@ -667,13 +920,20 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                     </div>
                   </div>
 
+                  {/* ==================================================
+                      DESCRIPTION
+                  ================================================== */}
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <Label htmlFor={`description-${item.id}`}>Description</Label>
+
                       <span className="text-xs tabular-nums text-muted-foreground">
-                        {(item.description ?? "").length}/1000
+                        {(item.description ?? "").length}
+                        /1000
                       </span>
                     </div>
+
                     <Textarea
                       id={`description-${item.id}`}
                       value={item.description ?? ""}
@@ -685,10 +945,21 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
                       placeholder="Add relevant coursework, academic projects, honors, activities, or other details..."
                       className="min-h-[120px] resize-y leading-6"
                     />
+
                     <p className="text-xs text-muted-foreground">
                       Optional. Add only information that strengthens your resume.
                     </p>
+
+                    {itemErrors.description && (
+                      <p className="text-xs font-medium text-destructive" role="alert">
+                        {itemErrors.description}
+                      </p>
+                    )}
                   </div>
+
+                  {/* ==================================================
+                      DONE
+                  ================================================== */}
 
                   <div className="flex justify-end border-t border-border pt-5">
                     <Button type="button" onClick={() => setEditingId(null)} className="gap-2">
@@ -702,6 +973,10 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
           );
         })}
 
+        {/* ======================================================
+            ADD ANOTHER EDUCATION
+        ====================================================== */}
+
         <Button
           type="button"
           variant="outline"
@@ -712,6 +987,10 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
           Add another education
         </Button>
       </div>
+
+      {/* ========================================================
+          GENERAL VALIDATION ERROR
+      ======================================================== */}
 
       {errors.education && (
         <div
@@ -725,10 +1004,15 @@ export default function EducationEditorSection({ resume, onUpdate }: EducationEd
   );
 }
 
+/* ============================================================
+   PREVIEW FIELD
+============================================================ */
+
 function PreviewField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+
       <p className="mt-1 text-sm">{value}</p>
     </div>
   );

@@ -39,7 +39,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <div className="absolute bottom-0 left-1/4 h-72 w-72 rounded-full bg-primary/2-3xl dark:bg-primary/4" />
         </div>
         <div className="relative z-10">
-          <AppContainer>{children}</AppContainer>
+          <AppContainer className="">{children}</AppContainer>
         </div>
       </main>
     </div>
