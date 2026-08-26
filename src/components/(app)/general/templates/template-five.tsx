@@ -3,54 +3,38 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 
-import { ResumeData } from "@/data/resume";
-import { DEFAULT_RESUME_DESIGN, RESUME_FONT_FAMILIES, RESUME_THEMES } from "@/data/resume-design";
+import type { ResumeData } from "@/data/resume";
+import { DEFAULT_RESUME_DESIGN, RESUME_THEMES } from "@/data/resume-design";
 
 interface TemplateFiveProps {
   resume: ResumeData;
   id?: string;
 }
 
-function getTypographyScale(scale: string) {
-  switch (scale) {
-    case "compact":
-      return {
-        name: "28px",
-        jobTitle: "11px",
-        body: "9.5px",
-        small: "8px",
-        section: "10px",
-        lineHeight: 1.45,
-        sectionGap: "14px",
-        itemGap: "9px",
-      };
+/**
+ * ============================================================
+ * TEMPLATE FIVE — CELESTE
+ * Elegant / Refined A4 Resume
+ *
+ * Typography is intentionally hardcoded.
+ * Theme colors remain dynamic.
+ * ============================================================
+ */
 
-    case "comfortable":
-      return {
-        name: "34px",
-        jobTitle: "13px",
-        body: "10.5px",
-        small: "8.5px",
-        section: "11px",
-        lineHeight: 1.6,
-        sectionGap: "20px",
-        itemGap: "13px",
-      };
+const FONT_FAMILY = '"Inter", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
-    case "standard":
-    default:
-      return {
-        name: "31px",
-        jobTitle: "12px",
-        body: "10px",
-        small: "8px",
-        section: "10.5px",
-        lineHeight: 1.52,
-        sectionGap: "17px",
-        itemGap: "11px",
-      };
-  }
-}
+const FONT_SIZE = {
+  name: "31px",
+  jobTitle: "12px",
+  body: "10px",
+  small: "8px",
+  section: "10.5px",
+};
+
+const LINE_HEIGHT = 1.52;
+
+const SECTION_GAP = "17px";
+const ITEM_GAP = "11px";
 
 function SectionHeading({ children, accent }: { children: ReactNode; accent: string }) {
   return (
@@ -76,7 +60,7 @@ function SectionHeading({ children, accent }: { children: ReactNode; accent: str
         style={{
           margin: 0,
           color: "#111827",
-          fontSize: "10.5px",
+          fontSize: FONT_SIZE.section,
           fontWeight: 800,
           letterSpacing: "0.14em",
           lineHeight: 1.2,
@@ -101,13 +85,13 @@ function SectionHeading({ children, accent }: { children: ReactNode; accent: str
 function BulletList({
   items,
   textColor,
-  fontSize,
-  lineHeight,
+  fontSize = FONT_SIZE.body,
+  lineHeight = LINE_HEIGHT,
 }: {
   items: string[];
   textColor: string;
-  fontSize: string;
-  lineHeight: number;
+  fontSize?: string;
+  lineHeight?: number;
 }) {
   if (!items.length) return null;
 
@@ -158,13 +142,11 @@ function DateRange({
   endDate,
   current,
   color,
-  fontSize,
 }: {
   startDate?: string;
   endDate?: string;
   current?: boolean;
   color: string;
-  fontSize: string;
 }) {
   if (!startDate && !endDate) return null;
 
@@ -174,7 +156,7 @@ function DateRange({
     <span
       style={{
         color,
-        fontSize,
+        fontSize: FONT_SIZE.small,
         fontWeight: 600,
         whiteSpace: "nowrap",
         lineHeight: 1.35,
@@ -197,7 +179,7 @@ function ContactItem({ value, accent }: { value?: string; accent: string }) {
         alignItems: "center",
         gap: "5px",
         color: "#4B5563",
-        fontSize: "8px",
+        fontSize: FONT_SIZE.small,
         lineHeight: 1.4,
         overflowWrap: "anywhere",
       }}
@@ -212,21 +194,19 @@ function ContactItem({ value, accent }: { value?: string; accent: string }) {
           flexShrink: 0,
         }}
       />
+
       {value}
     </span>
   );
 }
 
 export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) {
+  /**
+   * Theme remains dynamic.
+   *
+   * Font family and typography are intentionally NOT dynamic.
+   */
   const theme = RESUME_THEMES[resume.themeId] ?? RESUME_THEMES[DEFAULT_RESUME_DESIGN.themeId];
-
-  const font =
-    RESUME_FONT_FAMILIES[resume.fontFamilyId] ??
-    RESUME_FONT_FAMILIES[DEFAULT_RESUME_DESIGN.fontFamilyId];
-
-  const typography = getTypographyScale(
-    resume.typographyScale || DEFAULT_RESUME_DESIGN.typographyScale,
-  );
 
   const colors = theme.colors;
 
@@ -236,7 +216,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
     minHeight: "297mm",
     boxSizing: "border-box",
     backgroundColor: "#ffffff",
-    fontFamily: font.family,
+    fontFamily: FONT_FAMILY,
     padding: "13mm 14mm 12mm",
     margin: "0 auto",
     overflow: "visible",
@@ -246,8 +226,8 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
   const bodyTextStyle: CSSProperties = {
     margin: 0,
     color: colors.textMuted,
-    fontSize: typography.body,
-    lineHeight: typography.lineHeight,
+    fontSize: FONT_SIZE.body,
+    lineHeight: LINE_HEIGHT,
   };
 
   return (
@@ -258,8 +238,6 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
       data-template="elegant"
       data-template-id="template-five"
       data-theme={resume.themeId}
-      data-font={resume.fontFamilyId}
-      data-typography-scale={resume.typographyScale}
     >
       {/* ============================================================
           TOP HEADER
@@ -299,7 +277,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
             <span
               style={{
                 color: colors.textSubtle,
-                fontSize: typography.small,
+                fontSize: FONT_SIZE.small,
                 fontWeight: 800,
                 letterSpacing: "0.18em",
                 lineHeight: 1.2,
@@ -314,7 +292,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
             style={{
               margin: 0,
               color: colors.text,
-              fontSize: typography.name,
+              fontSize: FONT_SIZE.name,
               fontWeight: 850,
               letterSpacing: "-0.04em",
               lineHeight: 1,
@@ -328,7 +306,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
               style={{
                 margin: "7px 0 0",
                 color: colors.accent,
-                fontSize: typography.jobTitle,
+                fontSize: FONT_SIZE.jobTitle,
                 fontWeight: 750,
                 letterSpacing: "0.025em",
                 lineHeight: 1.3,
@@ -399,7 +377,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: typography.sectionGap,
+          gap: SECTION_GAP,
           marginTop: "17px",
         }}
       >
@@ -427,7 +405,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: typography.itemGap,
+                gap: ITEM_GAP,
               }}
             >
               {resume.experience.map((experience) => (
@@ -488,7 +466,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                           style={{
                             margin: 0,
                             color: colors.text,
-                            fontSize: typography.body,
+                            fontSize: FONT_SIZE.body,
                             fontWeight: 800,
                             lineHeight: 1.35,
                           }}
@@ -500,7 +478,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                           style={{
                             margin: "2px 0 0",
                             color: colors.accent,
-                            fontSize: typography.small,
+                            fontSize: FONT_SIZE.small,
                             fontWeight: 750,
                             lineHeight: 1.35,
                           }}
@@ -515,7 +493,6 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         endDate={experience.endDate}
                         current={experience.current}
                         color={colors.textSubtle}
-                        fontSize={typography.small}
                       />
                     </div>
 
@@ -533,8 +510,6 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                     <BulletList
                       items={experience.achievements || []}
                       textColor={colors.textMuted}
-                      fontSize={typography.body}
-                      lineHeight={typography.lineHeight}
                     />
                   </div>
                 </div>
@@ -544,7 +519,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
         )}
 
         {/* ==========================================================
-            TWO COLUMN — EDUCATION + SKILLS
+            EDUCATION + SKILLS
             ========================================================== */}
 
         {(resume.education.length > 0 || resume.skills.length > 0) && (
@@ -583,7 +558,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                             style={{
                               margin: 0,
                               color: colors.text,
-                              fontSize: typography.body,
+                              fontSize: FONT_SIZE.body,
                               fontWeight: 800,
                               lineHeight: 1.35,
                             }}
@@ -596,7 +571,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                             style={{
                               margin: "2px 0 0",
                               color: colors.accent,
-                              fontSize: typography.small,
+                              fontSize: FONT_SIZE.small,
                               fontWeight: 700,
                             }}
                           >
@@ -610,7 +585,6 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                           endDate={education.endDate}
                           current={education.current}
                           color={colors.textSubtle}
-                          fontSize={typography.small}
                         />
                       </div>
 
@@ -654,7 +628,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         borderRadius: "4px",
                         backgroundColor: colors.surface,
                         color: colors.text,
-                        fontSize: typography.small,
+                        fontSize: FONT_SIZE.small,
                         fontWeight: 700,
                         lineHeight: 1.2,
                       }}
@@ -685,6 +659,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
             >
               {resume.projects.map((project) => {
                 const technologies = project.technologies || [];
+
                 const achievements = project.achievements || [];
 
                 return (
@@ -700,7 +675,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       style={{
                         margin: 0,
                         color: colors.text,
-                        fontSize: typography.body,
+                        fontSize: FONT_SIZE.body,
                         fontWeight: 800,
                         lineHeight: 1.35,
                       }}
@@ -713,7 +688,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: "2px 0 0",
                           color: colors.accent,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                           fontWeight: 700,
                         }}
                       >
@@ -735,7 +710,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: "5px 0 0",
                           color: colors.textSubtle,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                           fontWeight: 600,
                           lineHeight: 1.4,
                         }}
@@ -748,7 +723,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       <BulletList
                         items={achievements}
                         textColor={colors.textMuted}
-                        fontSize={typography.small}
+                        fontSize={FONT_SIZE.small}
                         lineHeight={1.45}
                       />
                     )}
@@ -788,7 +763,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: 0,
                           color: colors.text,
-                          fontSize: typography.body,
+                          fontSize: FONT_SIZE.body,
                           fontWeight: 750,
                           lineHeight: 1.35,
                         }}
@@ -800,7 +775,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: "2px 0 0",
                           color: colors.textMuted,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                           lineHeight: 1.4,
                         }}
                       >
@@ -826,7 +801,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: 0,
                           color: colors.text,
-                          fontSize: typography.body,
+                          fontSize: FONT_SIZE.body,
                           fontWeight: 750,
                           lineHeight: 1.35,
                         }}
@@ -838,7 +813,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: "2px 0 0",
                           color: colors.textMuted,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                         }}
                       >
                         {award.issuer} · {award.date}
@@ -863,6 +838,8 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
               gap: "24px",
             }}
           >
+            {/* LANGUAGES */}
+
             {resume.languages.length > 0 && (
               <div>
                 <SectionHeading accent={colors.accent}>Languages</SectionHeading>
@@ -886,7 +863,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       <span
                         style={{
                           color: colors.text,
-                          fontSize: typography.body,
+                          fontSize: FONT_SIZE.body,
                           fontWeight: 700,
                         }}
                       >
@@ -896,7 +873,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       <span
                         style={{
                           color: colors.textSubtle,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                         }}
                       >
                         {language.proficiency}
@@ -906,6 +883,8 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                 </div>
               </div>
             )}
+
+            {/* INTERESTS */}
 
             {resume.interests.length > 0 && (
               <div>
@@ -923,7 +902,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       key={interest}
                       style={{
                         color: colors.textMuted,
-                        fontSize: typography.small,
+                        fontSize: FONT_SIZE.small,
                         lineHeight: 1.4,
                       }}
                     >
@@ -957,7 +936,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                     style={{
                       margin: 0,
                       color: colors.text,
-                      fontSize: typography.body,
+                      fontSize: FONT_SIZE.body,
                       fontWeight: 750,
                     }}
                   >
@@ -968,7 +947,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                     style={{
                       margin: "2px 0 0",
                       color: colors.textMuted,
-                      fontSize: typography.small,
+                      fontSize: FONT_SIZE.small,
                     }}
                   >
                     {publication.publisher} · {publication.date}
@@ -991,7 +970,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
         )}
 
         {/* ==========================================================
-            VOLUNTEER
+            VOLUNTEER EXPERIENCE
             ========================================================== */}
 
         {resume.volunteer.length > 0 && (
@@ -1002,7 +981,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: typography.itemGap,
+                gap: ITEM_GAP,
               }}
             >
               {resume.volunteer.map((volunteer) => (
@@ -1020,7 +999,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: 0,
                           color: colors.text,
-                          fontSize: typography.body,
+                          fontSize: FONT_SIZE.body,
                           fontWeight: 750,
                         }}
                       >
@@ -1031,7 +1010,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: "2px 0 0",
                           color: colors.accent,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                           fontWeight: 700,
                         }}
                       >
@@ -1044,7 +1023,6 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       endDate={volunteer.endDate}
                       current={volunteer.current}
                       color={colors.textSubtle}
-                      fontSize={typography.small}
                     />
                   </div>
 
@@ -1085,7 +1063,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                     style={{
                       margin: 0,
                       color: colors.text,
-                      fontSize: typography.body,
+                      fontSize: FONT_SIZE.body,
                       fontWeight: 750,
                     }}
                   >
@@ -1096,7 +1074,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                     style={{
                       margin: "2px 0 0",
                       color: colors.accent,
-                      fontSize: typography.small,
+                      fontSize: FONT_SIZE.small,
                       fontWeight: 700,
                     }}
                   >
@@ -1109,7 +1087,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                       style={{
                         margin: "3px 0 0",
                         color: colors.textMuted,
-                        fontSize: typography.small,
+                        fontSize: FONT_SIZE.small,
                       }}
                     >
                       {[reference.email, reference.phone].filter(Boolean).join(" · ")}
@@ -1162,7 +1140,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: 0,
                           color: colors.text,
-                          fontSize: typography.body,
+                          fontSize: FONT_SIZE.body,
                           fontWeight: 750,
                         }}
                       >
@@ -1173,7 +1151,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         <span
                           style={{
                             color: colors.textSubtle,
-                            fontSize: typography.small,
+                            fontSize: FONT_SIZE.small,
                             whiteSpace: "nowrap",
                           }}
                         >
@@ -1187,7 +1165,7 @@ export function TemplateFive({ resume, id = "resume-page" }: TemplateFiveProps) 
                         style={{
                           margin: "2px 0 0",
                           color: colors.accent,
-                          fontSize: typography.small,
+                          fontSize: FONT_SIZE.small,
                           fontWeight: 700,
                         }}
                       >

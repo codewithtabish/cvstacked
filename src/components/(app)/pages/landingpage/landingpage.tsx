@@ -9,6 +9,7 @@ import HeroToggle from "./heros/hero-toggle";
 import { PricingSection } from "./pricing-section";
 import Stats from "./stats/stats";
 // import TemplatesShowcase from "./templateshowcase/template-showcase";
+import LandingPageTemplates from "./templateshowcase/landidng-page-templatelist";
 import TestimonialsSection from "./testmonials/testmonial-section";
 import HowItWorks from "./working/how-it-work";
 
@@ -18,6 +19,7 @@ export function LandingPage() {
       <main>
         <HeroToggle resume={seniorSoftwareEngineerResume} />
         <HowItWorks />
+        <LandingPageTemplates />
         {/* <TemplatesShowcase /> */}
         <AICapabilities resume={seniorSoftwareEngineerResume} />
         <LiveFormBuilder resume={seniorSoftwareEngineerResume} />

@@ -1,14 +1,28 @@
-import type { ResumeFontFamily, ResumeTheme } from "@/types/resume-design";
-
-// ============================================================
-// RESUME THEMES
-// ============================================================
+import type { ResumeTheme } from "@/types/resume-design";
 
 // ============================================================
 // RESUME THEMES
 // ============================================================
 
 export const RESUME_THEMES: Record<string, ResumeTheme> = {
+  rose: {
+    id: "rose",
+    name: "Rose",
+    colors: {
+      accent: "#E11D48",
+      accentDark: "#BE123C",
+      accentLight: "#FFE4E6",
+      text: "#111827",
+      textMuted: "#4B5563",
+      textSubtle: "#6B7280",
+      background: "#FFFFFF",
+      surface: "#FFF1F2",
+      border: "#FECDD3",
+      onAccent: "#FFFFFF",
+      onAccentMuted: "#FFE4E6",
+    },
+  },
+
   blue: {
     id: "blue",
     name: "Blue",
@@ -225,24 +239,6 @@ export const RESUME_THEMES: Record<string, ResumeTheme> = {
     },
   },
 
-  rose: {
-    id: "rose",
-    name: "Rose",
-    colors: {
-      accent: "#E11D48",
-      accentDark: "#BE123C",
-      accentLight: "#FFE4E6",
-      text: "#111827",
-      textMuted: "#4B5563",
-      textSubtle: "#6B7280",
-      background: "#FFFFFF",
-      surface: "#FFF1F2",
-      border: "#FECDD3",
-      onAccent: "#FFFFFF",
-      onAccentMuted: "#FFE4E6",
-    },
-  },
-
   burgundy: {
     id: "burgundy",
     name: "Burgundy",
@@ -392,146 +388,26 @@ export const RESUME_THEMES: Record<string, ResumeTheme> = {
 // RESUME FONT FAMILIES
 // ============================================================
 
-export const RESUME_FONT_FAMILIES: Record<string, ResumeFontFamily> = {
-  inter: {
-    id: "inter",
-    name: "Inter",
-    family: "Inter",
-  },
-
-  sourceSans3: {
-    id: "source-sans-3",
-    name: "Source Sans 3",
-    family: "Source Sans 3",
-  },
-
-  roboto: {
-    id: "roboto",
-    name: "Roboto",
-    family: "Roboto",
-  },
-
-  lato: {
-    id: "lato",
-    name: "Lato",
-    family: "Lato",
-  },
-
-  openSans: {
-    id: "open-sans",
-    name: "Open Sans",
-    family: "Open Sans",
-  },
-
-  nunitoSans: {
-    id: "nunito-sans",
-    name: "Nunito Sans",
-    family: "Nunito Sans",
-  },
-
-  workSans: {
-    id: "work-sans",
-    name: "Work Sans",
-    family: "Work Sans",
-  },
-
-  dmSans: {
-    id: "dm-sans",
-    name: "DM Sans",
-    family: "DM Sans",
-  },
-
-  manrope: {
-    id: "manrope",
-    name: "Manrope",
-    family: "Manrope",
-  },
-
-  ibmPlexSans: {
-    id: "ibm-plex-sans",
-    name: "IBM Plex Sans",
-    family: "IBM Plex Sans",
-  },
-
-  ibmPlexMono: {
-    id: "ibm-plex-mono",
-    name: "IBM Plex Mono",
-    family: "IBM Plex Mono",
-  },
-
-  montserrat: {
-    id: "montserrat",
-    name: "Montserrat",
-    family: "Montserrat",
-  },
-
-  poppins: {
-    id: "poppins",
-    name: "Poppins",
-    family: "Poppins",
-  },
-
-  raleway: {
-    id: "raleway",
-    name: "Raleway",
-    family: "Raleway",
-  },
-
-  cabin: {
-    id: "cabin",
-    name: "Cabin",
-    family: "Cabin",
-  },
-
-  barlow: {
-    id: "barlow",
-    name: "Barlow",
-    family: "Barlow",
-  },
-
-  geist: {
-    id: "geist",
-    name: "Geist",
-    family: "Geist",
-  },
-
-  merriweather: {
-    id: "merriweather",
-    name: "Merriweather",
-    family: "Merriweather",
-  },
-
-  libreBaskerville: {
-    id: "libre-baskerville",
-    name: "Libre Baskerville",
-    family: "Libre Baskerville",
-  },
-
-  playfairDisplay: {
-    id: "playfair-display",
-    name: "Playfair Display",
-    family: "Playfair Display",
-  },
-
-  georgia: {
-    id: "georgia",
-    name: "Georgia",
-    family: "Georgia",
-  },
-
-  garamond: {
-    id: "garamond",
-    name: "Garamond",
-    family: "Garamond",
-  },
-};
-
 // ============================================================
 // DEFAULT RESUME DESIGN
 // ============================================================
 
+/**
+ * Global default design used when a template does not define
+ * its own design settings.
+ *
+ * IMPORTANT:
+ * Keep this static.
+ *
+ * Do NOT use getRandomResumeThemeId() here because this object
+ * is evaluated when the module is loaded, which makes the
+ * "default" design unpredictable.
+ *
+ * Individual templates can explicitly override themeId when
+ * they need a specific visual identity.
+ */
 export const DEFAULT_RESUME_DESIGN = {
-  themeId: "blue",
-  fontFamilyId: "inter",
-  typographyScale: "standard",
+  themeId: "amber",
+  // fontFamilyId: "inter",
+  // typographyScale: "standard",
 } as const;

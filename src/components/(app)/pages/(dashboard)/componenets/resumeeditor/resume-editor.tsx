@@ -20,6 +20,7 @@ import {
   User,
   Wrench,
 } from "lucide-react";
+
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -30,11 +31,13 @@ import { loadDraft, saveDraft } from "@/lib/resume-draft";
 import type { ResumeData } from "@/types/resume";
 
 import CertificationsSectionEditor from "./Certifications-sectioneditor";
+import CustomEditorSection from "./custom-editor-section";
 import EducationEditorSection from "./education-section-editor";
 import ExperienceSectionEditor, {
   type ExperienceValidationErrors,
   validateExperience,
 } from "./experience-section-editor";
+import InterestsEditorSection from "./interests-editor-section";
 import LanguagesSectionEditor from "./language-section-editor";
 import {
   PersonalSectionEditor,
@@ -46,17 +49,29 @@ import {
   type ProjectSectionValidationErrors,
   validateProjects,
 } from "./project-section-editor";
+import ResumePublicationEditor from "./publication-editor-section";
+import ReferencesEditor from "./references-editor";
+import ResumeAwardEditor from "./resume-award-editor";
 import { ResumePreview } from "./resume-previewer";
 import SkillsSectionEditor, {
   type SkillsValidationErrors,
   validateSkills,
 } from "./skills-section-editor";
 import { SummarySectionEditor } from "./summarysectioneditor";
+import { VolunteerEditorSection } from "./volunteer-editor-section";
+
+/* ============================================================
+   PROPS
+   ============================================================ */
 
 interface ResumeEditorProps {
   initialResume?: ResumeData;
   templateId: string;
 }
+
+/* ============================================================
+   SECTION TYPES
+   ============================================================ */
 
 type SectionId =
   | "personal"
@@ -80,6 +95,10 @@ interface ResumeSection {
   description: string;
   icon: typeof User;
 }
+
+/* ============================================================
+   SECTIONS
+   ============================================================ */
 
 const SECTIONS: ResumeSection[] = [
   {
@@ -168,6 +187,10 @@ const SECTIONS: ResumeSection[] = [
   },
 ];
 
+/* ============================================================
+   EMPTY RESUME
+   ============================================================ */
+
 function createEmptyResume(templateId: string): ResumeData {
   return {
     id: crypto.randomUUID(),
@@ -176,7 +199,6 @@ function createEmptyResume(templateId: string): ResumeData {
     themeId: "blue",
     fontFamilyId: "inter",
     typographyScale: "comfortable",
-
     personal: {
       firstName: "",
       lastName: "",
@@ -191,19 +213,13 @@ function createEmptyResume(templateId: string): ResumeData {
       github: "",
       portfolio: "",
     },
-
     summary: "",
     experience: [],
     education: [],
     skills: [],
     projects: [],
     certifications: [],
-
-    // Keep languages completely empty initially.
-    // The language editor will create a valid proficiency value
-    // when the user adds a language.
     languages: [],
-
     awards: [],
     publications: [],
     volunteer: [],
@@ -212,6 +228,10 @@ function createEmptyResume(templateId: string): ResumeData {
     customSections: [],
   };
 }
+
+/* ============================================================
+   CLIENT CHECK
+   ============================================================ */
 
 const emptySubscribe = () => () => {};
 
@@ -223,16 +243,26 @@ function useIsClient() {
   );
 }
 
+/* ============================================================
+   NORMALIZE RESUME
+   ============================================================ */
+
 function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
   const personal = resume.personal ?? {};
 
+  const validProficiencies = [
+    "elementary",
+    "conversational",
+    "professional",
+    "fluent",
+    "native",
+  ] as const;
+
   return {
     ...resume,
-
     id: resume.id ?? crypto.randomUUID(),
     title: resume.title ?? "Untitled Resume",
     templateId,
-
     themeId: resume.themeId ?? "blue",
     fontFamilyId: resume.fontFamilyId ?? "inter",
     typographyScale: resume.typographyScale ?? "comfortable",
@@ -259,31 +289,7 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
     projects: resume.projects ?? [],
     certifications: resume.certifications ?? [],
 
-    /*
-     * IMPORTANT:
-     *
-     * Do not map language.proficiency to "".
-     *
-     * ResumeLanguage.proficiency is a strict union:
-     *
-     * "elementary"
-     * "conversational"
-     * "professional"
-     * "fluent"
-     * "native"
-     *
-     * Existing drafts should therefore be cleaned here.
-     */
-
     languages: (resume.languages ?? []).map((language) => {
-      const validProficiencies = [
-        "elementary",
-        "conversational",
-        "professional",
-        "fluent",
-        "native",
-      ] as const;
-
       const proficiency = validProficiencies.includes(language.proficiency)
         ? language.proficiency
         : "professional";
@@ -298,19 +304,19 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
     publications: resume.publications ?? [],
     volunteer: resume.volunteer ?? [],
     references: resume.references ?? [],
-    interests: resume.interests ?? [],
+
+    interests: Array.isArray(resume.interests)
+      ? resume.interests.filter((interest): interest is string => typeof interest === "string")
+      : [],
+
     customSections: resume.customSections ?? [],
   };
 }
 
-/**
- * Draft is the source of truth when it exists.
- *
- * Priority:
- * 1. sessionStorage draft
- * 2. initialResume
- * 3. completely empty resume
- */
+/* ============================================================
+   INITIAL RESUME
+   ============================================================ */
+
 function getInitialResume(templateId: string, initialResume?: ResumeData): ResumeData {
   const draft = loadDraft(templateId);
 
@@ -325,6 +331,10 @@ function getInitialResume(templateId: string, initialResume?: ResumeData): Resum
   return createEmptyResume(templateId);
 }
 
+/* ============================================================
+   INITIAL SECTION
+   ============================================================ */
+
 function getInitialSectionIndex(templateId: string): number {
   const draft = loadDraft(templateId);
 
@@ -334,6 +344,10 @@ function getInitialSectionIndex(templateId: string): number {
 
   return 0;
 }
+
+/* ============================================================
+   VALIDATION HELPERS
+   ============================================================ */
 
 function validateSummary(summary: string): boolean {
   return summary.trim().length > 0;
@@ -356,6 +370,18 @@ function validateEducation(education: ResumeData["education"]): boolean {
   });
 }
 
+/* ============================================================
+   PERSONAL GATE
+   ============================================================ */
+
+function isPersonalComplete(resume: ResumeData): boolean {
+  return Object.keys(validatePersonalInfo(resume.personal)).length === 0;
+}
+
+/* ============================================================
+   MAIN EDITOR
+   ============================================================ */
+
 export function ResumeEditor({ initialResume, templateId }: ResumeEditorProps) {
   const isClient = useIsClient();
 
@@ -369,6 +395,10 @@ export function ResumeEditor({ initialResume, templateId }: ResumeEditorProps) {
 
   return <ResumeEditorClient initialResume={initialResume} templateId={templateId} />;
 }
+
+/* ============================================================
+   CLIENT EDITOR
+   ============================================================ */
 
 function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
   const [resume, setResume] = useState<ResumeData>(() =>
@@ -399,18 +429,16 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
   const [projectValidationStarted, setProjectValidationStarted] = useState(false);
 
-  /**
-   * editorDraft is the complete resume used by the section editors.
-   */
   const [editorDraft, setEditorDraft] = useState<ResumeData>(() =>
     getInitialResume(templateId, initialResume),
   );
 
   const emptyResume = useMemo(() => createEmptyResume(templateId), [templateId]);
 
-  /**
-   * Persist the complete resume.
-   */
+  /* ==========================================================
+     SAVE DRAFT
+     ========================================================== */
+
   useEffect(() => {
     saveDraft(templateId, resume, activeSectionIndex);
   }, [templateId, resume, activeSectionIndex]);
@@ -420,7 +448,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
   const ActiveIcon = activeSection.icon;
 
   const isFirst = activeSectionIndex === 0;
+
   const isLast = activeSectionIndex === SECTIONS.length - 1;
+
+  const personalComplete = isPersonalComplete(resume);
 
   const summaryComplete = validateSummary(resume.summary ?? "");
 
@@ -430,24 +461,18 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
   const projectsComplete = Object.keys(validateProjects(resume.projects ?? [])).length === 0;
 
-  /**
-   * Handles changes from section editors AND the Customize dialog.
-   */
+  /* ==========================================================
+     CHANGE HANDLER
+     ========================================================== */
+
   const onChange = (next: ResumeData) => {
     const normalizedNext = normalizeResume(next, templateId);
 
-    /**
-     * Keep editorDraft completely synchronized.
-     */
     setEditorDraft(normalizedNext);
 
-    /**
-     * Update the real resume.
-     */
     setResume((currentResume) => {
       const updatedResume: ResumeData = {
         ...currentResume,
-
         title: normalizedNext.title,
         themeId: normalizedNext.themeId,
         fontFamilyId: normalizedNext.fontFamilyId,
@@ -545,9 +570,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
       }
     });
 
-    /**
-     * Revalidate active sections while typing.
-     */
+    /* ========================================================
+       LIVE VALIDATION
+       ======================================================== */
+
     if (activeSection.id === "personal" && personalValidationStarted) {
       setPersonalErrors(validatePersonalInfo(normalizedNext.personal));
     }
@@ -565,62 +591,35 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     }
   };
 
-  /**
-   * Validation for the current section.
-   */
-  const validateCurrentSection = (): boolean => {
-    if (activeSection.id === "personal") {
-      setPersonalValidationStarted(true);
+  /* ==========================================================
+     VALIDATE PERSONAL
+     ========================================================== */
 
-      const errors = validatePersonalInfo(resume.personal);
-
-      setPersonalErrors(errors);
-
-      return Object.keys(errors).length === 0;
+  const ensurePersonalComplete = (): boolean => {
+    if (personalComplete) {
+      return true;
     }
 
-    if (activeSection.id === "summary") {
-      return summaryComplete;
+    setPersonalValidationStarted(true);
+
+    const errors = validatePersonalInfo(resume.personal);
+
+    setPersonalErrors(errors);
+
+    if (activeSection.id !== "personal") {
+      const personalIndex = SECTIONS.findIndex((section) => section.id === "personal");
+
+      if (personalIndex !== -1) {
+        setActiveSectionIndex(personalIndex);
+      }
     }
 
-    if (activeSection.id === "experience") {
-      setExperienceValidationStarted(true);
-
-      const errors = validateExperience(resume.experience ?? []);
-
-      setExperienceErrors(errors);
-
-      return Object.keys(errors).length === 0;
-    }
-
-    if (activeSection.id === "education") {
-      setEducationValidationStarted(true);
-
-      return educationComplete;
-    }
-
-    if (activeSection.id === "skills") {
-      setSkillsValidationStarted(true);
-
-      const errors = validateSkills(resume.skills ?? []);
-
-      setSkillsErrors(errors);
-
-      return Object.keys(errors).length === 0;
-    }
-
-    if (activeSection.id === "projects") {
-      setProjectValidationStarted(true);
-
-      const errors = validateProjects(resume.projects ?? []);
-
-      setProjectErrors(errors);
-
-      return Object.keys(errors).length === 0;
-    }
-
-    return true;
+    return false;
   };
+
+  /* ==========================================================
+     RESET VALIDATION UI
+     ========================================================== */
 
   const resetValidation = () => {
     setPersonalValidationStarted(false);
@@ -638,44 +637,60 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     setProjectErrors({});
   };
 
-  /**
-   * Move to another section.
-   */
+  /* ==========================================================
+     MOVE TO SECTION
+     ========================================================== */
+
   const moveToSection = (index: number) => {
     if (index < 0 || index >= SECTIONS.length) {
       return;
     }
 
+    if (index !== 0 && !personalComplete) {
+      ensurePersonalComplete();
+      return;
+    }
+
     setActiveSectionIndex(index);
     resetValidation();
-
-    /**
-     * Use the latest complete resume.
-     */
     setEditorDraft(resume);
   };
+
+  /* ==========================================================
+     NEXT
+     ========================================================== */
 
   const handleNext = () => {
     if (isLast) {
       return;
     }
 
-    const valid = validateCurrentSection();
-
-    if (!valid) {
+    if (!personalComplete) {
+      ensurePersonalComplete();
       return;
     }
 
     moveToSection(activeSectionIndex + 1);
   };
 
+  /* ==========================================================
+     PREVIOUS
+     ========================================================== */
+
   const handlePrevious = () => {
     if (isFirst) {
       return;
     }
 
-    moveToSection(activeSectionIndex - 1);
+    setActiveSectionIndex(activeSectionIndex - 1);
+
+    resetValidation();
+    setEditorDraft(resume);
   };
+
+  /* ==========================================================
+     SIDEBAR SECTION CHANGE
+     ========================================================== */
 
   const handleSectionChange = (index: number) => {
     if (index < 0 || index >= SECTIONS.length) {
@@ -686,53 +701,89 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
       return;
     }
 
-    if (index < activeSectionIndex) {
+    if (index === 0) {
       moveToSection(index);
       return;
     }
 
-    const valid = validateCurrentSection();
-
-    if (!valid) {
+    if (!personalComplete) {
+      ensurePersonalComplete();
       return;
     }
 
     moveToSection(index);
   };
 
+  /* ==========================================================
+     COMPLETION STATE
+     ========================================================== */
+
   const isSectionCompleted = (index: number): boolean => {
-    if (index >= activeSectionIndex) {
+    const section = SECTIONS[index];
+
+    if (!section) {
       return false;
     }
 
-    const section = SECTIONS[index];
-
     switch (section.id) {
       case "personal":
-        return Object.keys(validatePersonalInfo(resume.personal)).length === 0;
+        return personalComplete;
 
       case "summary":
         return summaryComplete;
 
       case "experience":
-        return Object.keys(validateExperience(resume.experience ?? [])).length === 0;
+        return (
+          (resume.experience?.length ?? 0) > 0 &&
+          Object.keys(validateExperience(resume.experience ?? [])).length === 0
+        );
 
       case "education":
-        return educationComplete;
+        return (resume.education?.length ?? 0) > 0 && educationComplete;
 
       case "skills":
-        return skillsComplete;
+        return (resume.skills?.length ?? 0) > 0 && skillsComplete;
 
       case "projects":
-        return projectsComplete;
+        return (resume.projects?.length ?? 0) > 0 && projectsComplete;
+
+      case "certifications":
+        return (resume.certifications?.length ?? 0) > 0;
+
+      case "languages":
+        return (resume.languages?.length ?? 0) > 0;
+
+      case "awards":
+        return (resume.awards?.length ?? 0) > 0;
+
+      case "publications":
+        return (resume.publications?.length ?? 0) > 0;
+
+      case "volunteer":
+        return (resume.volunteer?.length ?? 0) > 0;
+
+      case "references":
+        return (resume.references?.length ?? 0) > 0;
+
+      case "interests":
+        return (resume.interests?.length ?? 0) > 0;
+
+      case "custom":
+        return (resume.customSections?.length ?? 0) > 0;
 
       default:
-        return true;
+        return false;
     }
   };
 
+  /* ============================================================
+     RENDER
+     ============================================================ */
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
+      {/* HEADER */}
+
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 sm:px-5 lg:px-7">
         <div className="flex min-w-0 items-center gap-3">
           <span className="shrink-0 text-sm font-semibold tracking-tight">CVStacked</span>
@@ -748,11 +799,13 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
           <TabsList className="h-9">
             <TabsTrigger value="editor" className="gap-1.5 px-3">
               <Pencil className="h-3.5 w-3.5" />
+
               <span className="hidden sm:inline">Editor</span>
             </TabsTrigger>
 
             <TabsTrigger value="preview" className="gap-1.5 px-3">
               <Eye className="h-3.5 w-3.5" />
+
               <span className="hidden sm:inline">Preview</span>
             </TabsTrigger>
           </TabsList>
@@ -776,14 +829,19 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
         </div>
       </header>
 
+      {/* MAIN TABS */}
+
       <Tabs
         value={view}
         onValueChange={(value) => setView(value as "editor" | "preview")}
         className="min-h-0 flex-1"
       >
+        {/* EDITOR */}
+
         <TabsContent value="editor" className="mt-0 h-full min-h-0 data-[state=inactive]:hidden">
           <div className="flex h-full min-h-0 flex-col">
-            {/* MOBILE SECTION NAVIGATION */}
+            {/* MOBILE NAVIGATION */}
+
             <div className="shrink-0 border-b border-border bg-background lg:hidden">
               <div className="px-3 py-3 sm:px-5">
                 <div className="flex items-center gap-2">
@@ -803,15 +861,18 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                     <div className="flex gap-2 overflow-x-auto">
                       {SECTIONS.map((section, index) => {
                         const Icon = section.icon;
+
                         const isActive = index === activeSectionIndex;
+
                         const isCompleted = isSectionCompleted(index);
-                        const isDisabled = index > activeSectionIndex;
+
+                        const isLocked = index > 0 && !personalComplete;
 
                         return (
                           <button
                             key={section.id}
                             type="button"
-                            disabled={isDisabled}
+                            disabled={isLocked}
                             onClick={() => handleSectionChange(index)}
                             className={[
                               "min-w-[110px] flex-1 rounded-lg border px-2.5 py-2 text-left",
@@ -820,8 +881,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                                 ? "border-primary/30 bg-primary/5"
                                 : isCompleted
                                   ? "border-border bg-muted/30"
-                                  : "border-transparent bg-muted/20 opacity-50",
-                              isDisabled ? "cursor-not-allowed" : "cursor-pointer",
+                                  : "border-border bg-muted/10",
+                              isLocked
+                                ? "cursor-not-allowed opacity-45"
+                                : "cursor-pointer hover:bg-muted/40",
                             ].join(" ")}
                           >
                             <div className="flex min-w-0 items-center gap-2">
@@ -830,7 +893,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
                                   isActive
                                     ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border bg-background text-muted-foreground",
+                                    : isCompleted
+                                      ? "border-primary/30 bg-primary/10 text-primary"
+                                      : "border-border bg-background text-muted-foreground",
                                 ].join(" ")}
                               >
                                 {isCompleted ? (
@@ -879,6 +944,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
             </div>
 
             {/* DESKTOP EDITOR */}
+
             <div className="hidden min-h-0 flex-1 lg:flex">
               <aside className="w-[270px] shrink-0 border-r border-border bg-muted/20">
                 <div className="flex h-full flex-col">
@@ -886,7 +952,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                     <p className="text-sm font-semibold tracking-tight">Resume sections</p>
 
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Complete each section to build your resume.
+                      Start with your personal information, then build your resume in any order.
                     </p>
                   </div>
 
@@ -895,25 +961,30 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                       <div className="space-y-1">
                         {SECTIONS.map((section, index) => {
                           const Icon = section.icon;
+
                           const isActive = index === activeSectionIndex;
+
                           const isCompleted = isSectionCompleted(index);
-                          const isDisabled = index > activeSectionIndex;
+
+                          const isLocked = index > 0 && !personalComplete;
 
                           return (
                             <button
                               key={section.id}
                               type="button"
-                              disabled={isDisabled}
+                              disabled={isLocked}
                               onClick={() => handleSectionChange(index)}
                               className={[
                                 "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left",
-                                "transition-colors duration-150",
+                                "transition-all duration-150",
                                 isActive
                                   ? "bg-primary/8 text-foreground ring-1 ring-primary/15"
                                   : isCompleted
                                     ? "text-foreground hover:bg-muted"
-                                    : "text-muted-foreground opacity-50",
-                                isDisabled ? "cursor-not-allowed" : "cursor-pointer",
+                                    : "text-muted-foreground hover:bg-muted/60",
+                                isLocked
+                                  ? "cursor-not-allowed opacity-45 hover:bg-transparent"
+                                  : "cursor-pointer",
                               ].join(" ")}
                             >
                               <span
@@ -921,7 +992,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
                                   isActive
                                     ? "border-primary/25 bg-primary text-primary-foreground"
-                                    : "border-border bg-background",
+                                    : isCompleted
+                                      ? "border-primary/20 bg-primary/10 text-primary"
+                                      : "border-border bg-background",
                                 ].join(" ")}
                               >
                                 {isCompleted ? (
@@ -958,9 +1031,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                           {activeSectionIndex + 1} of {SECTIONS.length}
                         </p>
 
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          Sections completed
-                        </p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">Resume progress</p>
                       </div>
 
                       <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
@@ -1009,6 +1080,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
             </div>
 
             {/* MOBILE EDITOR */}
+
             <ScrollArea className="min-h-0 flex-1 lg:hidden">
               <div className="w-full px-4 py-6 sm:px-6 sm:py-8">
                 <div className="mx-auto w-full max-w-3xl">
@@ -1043,6 +1115,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
         </TabsContent>
 
         {/* PREVIEW */}
+
         <TabsContent
           value="preview"
           className="mt-0 h-full min-h-0 overflow-hidden data-[state=inactive]:hidden"
@@ -1055,6 +1128,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     </div>
   );
 }
+
+/* ============================================================
+   SECTION CONTENT
+   ============================================================ */
 
 interface SectionContentProps {
   activeSection: ResumeSection;
@@ -1091,10 +1168,10 @@ function SectionContent({
   projectErrors,
   onProjectValidate,
 }: SectionContentProps) {
-  void emptyResume;
-
   return (
     <div>
+      {/* SECTION HEADING */}
+
       <div className="mb-7">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/40">
@@ -1110,6 +1187,8 @@ function SectionContent({
           </div>
         </div>
       </div>
+
+      {/* EDITOR CARD */}
 
       <div className="rounded-2xl border border-border bg-background shadow-sm">
         <div className="p-5 sm:p-7 lg:p-8">
@@ -1157,6 +1236,64 @@ function SectionContent({
             <CertificationsSectionEditor resume={resume} onChange={onChange} />
           ) : activeSection.id === "languages" ? (
             <LanguagesSectionEditor resume={resume} onChange={onChange} />
+          ) : activeSection.id === "awards" ? (
+            <ResumeAwardEditor
+              awards={resume.awards ?? []}
+              onChange={(awards) =>
+                onChange({
+                  ...resume,
+                  awards,
+                })
+              }
+            />
+          ) : activeSection.id === "publications" ? (
+            <ResumePublicationEditor
+              publications={resume.publications ?? []}
+              onChange={(publications) =>
+                onChange({
+                  ...resume,
+                  publications,
+                })
+              }
+            />
+          ) : activeSection.id === "volunteer" ? (
+            <VolunteerEditorSection
+              volunteer={resume.volunteer ?? []}
+              onChange={(volunteer) =>
+                onChange({
+                  ...resume,
+                  volunteer,
+                })
+              }
+            />
+          ) : activeSection.id === "references" ? (
+            <ReferencesEditor
+              resume={resume}
+              emptyResume={emptyResume}
+              isEmpty={(resume.references?.length ?? 0) === 0}
+              id={`${activeSection.id}-editor`}
+              onChange={onChange}
+            />
+          ) : activeSection.id === "interests" ? (
+            <InterestsEditorSection
+              interests={resume.interests ?? []}
+              onChange={(interests) =>
+                onChange({
+                  ...resume,
+                  interests,
+                })
+              }
+            />
+          ) : activeSection.id === "custom" ? (
+            <CustomEditorSection
+              customSections={resume.customSections ?? []}
+              onChange={(customSections) =>
+                onChange({
+                  ...resume,
+                  customSections,
+                })
+              }
+            />
           ) : (
             <EmptySectionState
               icon={ActiveIcon}
@@ -1169,6 +1306,10 @@ function SectionContent({
     </div>
   );
 }
+
+/* ============================================================
+   EMPTY SECTION
+   ============================================================ */
 
 interface EmptySectionStateProps {
   icon: typeof User;
@@ -1189,6 +1330,10 @@ function EmptySectionState({ icon: Icon, title, description }: EmptySectionState
     </div>
   );
 }
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
 
 interface EditorNavigationProps {
   isFirst: boolean;
@@ -1225,3 +1370,5 @@ function EditorNavigation({
     </div>
   );
 }
+
+export default ResumeEditor;

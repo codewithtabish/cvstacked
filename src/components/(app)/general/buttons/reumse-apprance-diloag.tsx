@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, Palette, TextCursorInput, Type } from "lucide-react";
+import { Check, Palette } from "lucide-react";
 import { ReactNode, useMemo, useState } from "react";
 
-import { RESUME_FONT_FAMILIES, RESUME_THEMES } from "@/data/resume-design";
+import { RESUME_THEMES } from "@/data/resume-design";
 
 import { ResumeData } from "@/data/resume";
 
@@ -15,14 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -81,10 +73,6 @@ export function ResumeAppearanceDialog({
   // ============================================================
   // SELECTED VALUES
   // ============================================================
-
-  const selectedTheme = useMemo(() => RESUME_THEMES[themeId], [themeId]);
-
-  const selectedFont = useMemo(() => RESUME_FONT_FAMILIES[fontFamilyId], [fontFamilyId]);
 
   const selectedTypography = useMemo(
     () => TYPOGRAPHY_SCALES[typographyScale as keyof typeof TYPOGRAPHY_SCALES],
@@ -222,126 +210,7 @@ export function ResumeAppearanceDialog({
 
             <Separator />
 
-            {/* ====================================================
-                FONT FAMILY
-                ==================================================== */}
-
-            <section className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Type className="size-4 text-muted-foreground" />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold">Font family</p>
-
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Choose the typography used by the resume.
-                  </p>
-                </div>
-              </div>
-
-              <Select value={fontFamilyId} onValueChange={setFontFamilyId}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Select font" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {Object.values(RESUME_FONT_FAMILIES).map((font) => (
-                    <SelectItem key={font.id} value={font.id}>
-                      <span
-                        style={{
-                          fontFamily: font.family,
-                        }}
-                      >
-                        {font.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {selectedFont && (
-                <div
-                  className="rounded-lg border bg-muted/40 px-4 py-3 text-sm"
-                  style={{
-                    fontFamily: selectedFont.family,
-                  }}
-                >
-                  The quick brown fox jumps over the lazy dog.
-                </div>
-              )}
-            </section>
-
             <Separator />
-
-            {/* ====================================================
-                TYPOGRAPHY SCALE
-                ==================================================== */}
-
-            <section className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <TextCursorInput className="size-4 text-muted-foreground" />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold">Typography scale</p>
-
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Control the overall text size and spacing.
-                  </p>
-                </div>
-              </div>
-
-              <Select value={typographyScale} onValueChange={setTypographyScale}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Select scale" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {Object.values(TYPOGRAPHY_SCALES).map((scale) => (
-                    <SelectItem key={scale.id} value={scale.id}>
-                      {scale.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {selectedTypography && (
-                <p className="text-xs text-muted-foreground">{selectedTypography.description}</p>
-              )}
-            </section>
-
-            {/* ====================================================
-                LIVE PREVIEW
-                ==================================================== */}
-
-            {selectedTheme && (
-              <section
-                className="rounded-xl border bg-background p-4"
-                style={{
-                  borderColor: selectedTheme.colors.accent,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="size-3 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor: selectedTheme.colors.accent,
-                    }}
-                  />
-
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Live appearance</p>
-
-                    <p className="truncate text-xs text-muted-foreground">
-                      {selectedTheme.name} · {selectedFont?.name} · {selectedTypography?.name}
-                    </p>
-                  </div>
-                </div>
-              </section>
-            )}
           </div>
         </div>
 

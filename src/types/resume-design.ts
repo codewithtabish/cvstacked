@@ -18,21 +18,3 @@ export type ResumeTheme = {
     onAccentMuted: string;
   };
 };
-
-export type ResumeFontFamily = {
-  id: string;
-  name: string;
-  family: string;
-};
-
-export type ResumeTypography = {
-  id: string;
-  name: string;
-  nameSize: number;
-  titleSize: number;
-  sectionHeadingSize: number;
-  subsectionHeadingSize: number;
-  bodySize: number;
-  metadataSize: number;
-  lineHeight: number;
-};

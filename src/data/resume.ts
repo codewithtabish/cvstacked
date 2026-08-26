@@ -1,4 +1,5 @@
 // resume.ts
+
 export type ResumeTemplate =
   | "modern"
   | "professional"
@@ -204,7 +205,6 @@ const DEFAULT_RESUME_SETTINGS = {
 export const seniorSoftwareEngineerResume: ResumeData = {
   id: "resume-software-engineer-001",
   title: "Senior Software Engineer Resume",
-
   templateId: "modern",
   themeId: DEFAULT_RESUME_SETTINGS.themeId,
   fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
@@ -453,6 +453,11 @@ export const seniorSoftwareEngineerResume: ResumeData = {
       current: true,
       description:
         "Mentor early-career developers through open-source projects, technical workshops, and career guidance.",
+      achievements: [
+        "Mentored more than 25 early-career developers.",
+        "Hosted monthly technical workshops focused on web development.",
+        "Reviewed open-source contributions and provided career guidance.",
+      ],
     },
   ],
 
@@ -466,6 +471,15 @@ export const seniorSoftwareEngineerResume: ResumeData = {
       phone: "+1 (415) 555-0122",
       relationship: "Former Manager",
     },
+    {
+      id: "ref-alex-002",
+      name: "James Wilson",
+      position: "Director of Engineering",
+      company: "Vertex Labs",
+      email: "james.wilson@example.com",
+      phone: "+1 (512) 555-0144",
+      relationship: "Former Engineering Lead",
+    },
   ],
 
   interests: [
@@ -476,7 +490,31 @@ export const seniorSoftwareEngineerResume: ResumeData = {
     "Technology Writing",
   ],
 
-  customSections: [],
+  customSections: [
+    {
+      id: "custom-alex-001",
+      title: "Professional Highlights",
+      description: "Selected career highlights and technical contributions.",
+      items: [
+        {
+          id: "custom-alex-item-001",
+          title: "Engineering Leadership",
+          subtitle: "Northstar Technologies",
+          date: "2024",
+          description:
+            "Led engineering initiatives across multiple product teams and mentored developers.",
+        },
+        {
+          id: "custom-alex-item-002",
+          title: "Open Source Contribution",
+          subtitle: "OpenSource UI",
+          date: "2021",
+          description:
+            "Created and maintained an open-source React component library used by developers worldwide.",
+        },
+      ],
+    },
+  ],
 };
 
 /* ============================================================
@@ -486,7 +524,6 @@ export const seniorSoftwareEngineerResume: ResumeData = {
 export const medicalDoctorResume: ResumeData = {
   id: "resume-doctor-001",
   title: "Medical Doctor Resume",
-
   templateId: "professional",
   themeId: DEFAULT_RESUME_SETTINGS.themeId,
   fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
@@ -679,6 +716,11 @@ export const medicalDoctorResume: ResumeData = {
       endDate: "2020",
       description:
         "Provided primary medical care and health education during community outreach programs.",
+      achievements: [
+        "Provided health screenings to underserved communities.",
+        "Delivered preventive health education sessions.",
+        "Supported community vaccination and wellness initiatives.",
+      ],
     },
   ],
 
@@ -689,13 +731,46 @@ export const medicalDoctorResume: ResumeData = {
       position: "Chief of Internal Medicine",
       company: "New York Medical Center",
       email: "michael.carter@example.com",
+      phone: "+1 (212) 555-0134",
       relationship: "Department Chair",
+    },
+    {
+      id: "doctor-ref-002",
+      name: "Dr. Emily Roberts",
+      position: "Associate Professor of Medicine",
+      company: "Harvard Medical School",
+      email: "emily.roberts@example.com",
+      relationship: "Academic Advisor",
     },
   ],
 
   interests: ["Global Health", "Medical Education", "Running", "Classical Music"],
 
-  customSections: [],
+  customSections: [
+    {
+      id: "custom-doctor-001",
+      title: "Clinical Leadership",
+      description: "Selected leadership and professional contributions.",
+      items: [
+        {
+          id: "custom-doctor-item-001",
+          title: "Quality Improvement Lead",
+          subtitle: "New York Medical Center",
+          date: "2023",
+          description:
+            "Led initiatives focused on improving discharge coordination and patient continuity of care.",
+        },
+        {
+          id: "custom-doctor-item-002",
+          title: "Resident Education",
+          subtitle: "Internal Medicine",
+          date: "2022",
+          description:
+            "Designed educational sessions and mentored residents during clinical rotations.",
+        },
+      ],
+    },
+  ],
 };
 
 /* ============================================================
@@ -705,7 +780,6 @@ export const medicalDoctorResume: ResumeData = {
 export const civilEngineerResume: ResumeData = {
   id: "resume-engineer-001",
   title: "Civil Engineer Resume",
-
   templateId: "executive",
   themeId: DEFAULT_RESUME_SETTINGS.themeId,
   fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
@@ -890,10 +964,33 @@ export const civilEngineerResume: ResumeData = {
       current: true,
       description:
         "Support infrastructure development and engineering education initiatives in underserved communities.",
+      achievements: [
+        "Supported community infrastructure assessment projects.",
+        "Provided technical guidance for small-scale development initiatives.",
+        "Participated in engineering education workshops.",
+      ],
     },
   ],
 
-  references: [],
+  references: [
+    {
+      id: "eng-ref-001",
+      name: "Robert Anderson",
+      position: "Engineering Director",
+      company: "AEC Infrastructure Group",
+      email: "robert.anderson@example.com",
+      phone: "+1 (312) 555-0191",
+      relationship: "Current Manager",
+    },
+    {
+      id: "eng-ref-002",
+      name: "Laura Mitchell",
+      position: "Senior Project Manager",
+      company: "Metro Engineering Partners",
+      email: "laura.mitchell@example.com",
+      relationship: "Former Manager",
+    },
+  ],
 
   interests: [
     "Sustainable Infrastructure",
@@ -903,7 +1000,31 @@ export const civilEngineerResume: ResumeData = {
     "Urban Development",
   ],
 
-  customSections: [],
+  customSections: [
+    {
+      id: "custom-engineer-001",
+      title: "Professional Projects",
+      description: "Selected infrastructure and engineering achievements.",
+      items: [
+        {
+          id: "custom-engineer-item-001",
+          title: "Downtown Transit Expansion",
+          subtitle: "Lead Civil Engineer",
+          date: "2022–Present",
+          description:
+            "Led multidisciplinary engineering coordination for a major urban transportation expansion.",
+        },
+        {
+          id: "custom-engineer-item-002",
+          title: "Infrastructure Planning Initiative",
+          subtitle: "AEC Infrastructure Group",
+          date: "2023",
+          description:
+            "Introduced standardized planning workflows that improved project delivery timelines.",
+        },
+      ],
+    },
+  ],
 };
 
 /* ============================================================
@@ -913,7 +1034,6 @@ export const civilEngineerResume: ResumeData = {
 export const productDesignerResume: ResumeData = {
   id: "resume-designer-001",
   title: "Senior Product Designer Resume",
-
   templateId: "creative",
   themeId: DEFAULT_RESUME_SETTINGS.themeId,
   fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
@@ -1083,14 +1203,61 @@ export const productDesignerResume: ResumeData = {
       current: true,
       description:
         "Mentor junior designers and career changers through portfolio reviews and design workshops.",
+      achievements: [
+        "Reviewed portfolios for early-career designers.",
+        "Hosted monthly design critique sessions.",
+        "Provided career guidance and interview preparation.",
+      ],
     },
   ],
 
-  references: [],
+  references: [
+    {
+      id: "designer-ref-001",
+      name: "Rachel Thompson",
+      position: "VP of Product",
+      company: "Nova Labs",
+      email: "rachel.thompson@example.com",
+      phone: "+1 (646) 555-0181",
+      relationship: "Current Manager",
+    },
+    {
+      id: "designer-ref-002",
+      name: "David Parker",
+      position: "Creative Director",
+      company: "Studio North",
+      email: "david.parker@example.com",
+      relationship: "Former Manager",
+    },
+  ],
 
   interests: ["Typography", "Photography", "Architecture", "Travel", "Creative Technology"],
 
-  customSections: [],
+  customSections: [
+    {
+      id: "custom-designer-001",
+      title: "Design Philosophy",
+      description: "Selected principles that guide product and user experience work.",
+      items: [
+        {
+          id: "custom-designer-item-001",
+          title: "User-Centered Design",
+          subtitle: "Research & Discovery",
+          date: "Ongoing",
+          description:
+            "Use qualitative and quantitative research to understand user needs before designing solutions.",
+        },
+        {
+          id: "custom-designer-item-002",
+          title: "Design Systems",
+          subtitle: "Scalable Product Design",
+          date: "2021–Present",
+          description:
+            "Build reusable design foundations that improve consistency, accessibility, and team velocity.",
+        },
+      ],
+    },
+  ],
 };
 
 /* ============================================================
@@ -1100,7 +1267,6 @@ export const productDesignerResume: ResumeData = {
 export const marketingManagerResume: ResumeData = {
   id: "resume-marketing-001",
   title: "Marketing Manager Resume",
-
   templateId: "minimal",
   themeId: DEFAULT_RESUME_SETTINGS.themeId,
   fontFamilyId: DEFAULT_RESUME_SETTINGS.fontFamilyId,
@@ -1274,13 +1440,70 @@ export const marketingManagerResume: ResumeData = {
     },
   ],
 
-  volunteer: [],
+  volunteer: [
+    {
+      id: "marketing-vol-001",
+      organization: "Women in Marketing Network",
+      role: "Volunteer Mentor",
+      startDate: "2022",
+      current: true,
+      description:
+        "Mentor aspiring marketing professionals and support community education programs.",
+      achievements: [
+        "Mentored early-career marketing professionals.",
+        "Hosted workshops on digital marketing and career development.",
+        "Reviewed resumes and portfolios for job seekers.",
+      ],
+    },
+  ],
 
-  references: [],
+  references: [
+    {
+      id: "marketing-ref-001",
+      name: "Christopher Evans",
+      position: "Chief Marketing Officer",
+      company: "CloudPeak",
+      email: "christopher.evans@example.com",
+      phone: "+1 (617) 555-0118",
+      relationship: "Current Manager",
+    },
+    {
+      id: "marketing-ref-002",
+      name: "Jessica Moore",
+      position: "VP of Growth",
+      company: "GrowthWorks",
+      email: "jessica.moore@example.com",
+      relationship: "Former Manager",
+    },
+  ],
 
   interests: ["Brand Strategy", "Travel", "Writing", "Behavioral Psychology", "Photography"],
 
-  customSections: [],
+  customSections: [
+    {
+      id: "custom-marketing-001",
+      title: "Selected Campaigns",
+      description: "Highlighted marketing campaigns and strategic initiatives.",
+      items: [
+        {
+          id: "custom-marketing-item-001",
+          title: "Global Product Launch",
+          subtitle: "CloudPeak",
+          date: "2024",
+          description:
+            "Led a global integrated campaign that generated more than 12,000 qualified leads.",
+        },
+        {
+          id: "custom-marketing-item-002",
+          title: "Organic Growth Program",
+          subtitle: "GrowthWorks",
+          date: "2020",
+          description:
+            "Developed an SEO and content strategy that increased organic traffic by 120%.",
+        },
+      ],
+    },
+  ],
 };
 
 /* ============================================================
@@ -1302,7 +1525,6 @@ export const demoResumes: ResumeData[] = [
 export const emptyResume: ResumeData = {
   id: "new-resume",
   title: "My Resume",
-
   templateId: "modern",
   themeId: "blue",
   fontFamilyId: "inter",

@@ -5,11 +5,65 @@ import { useState, type RefObject } from "react";
 
 const A4_WIDTH_MM = 210;
 
+// Browsers cap canvas dimensions (commonly ~16384px on one side, and a
+// total-pixel limit too). We pick the highest scale that stays safely
+// under that so quality is maximized without silently failing.
+const MAX_CANVAS_DIMENSION = 14000;
+
 interface DownloadPdfButtonProps {
   targetRef?: RefObject<HTMLElement | null>;
   elementId?: string;
   fileName?: string;
   className?: string;
+}
+
+function waitForFonts(): Promise<void> {
+  if (typeof document === "undefined" || !document.fonts) return Promise.resolve();
+  return document.fonts.ready.then(() => undefined).catch(() => undefined);
+}
+
+function waitForImages(root: HTMLElement): Promise<void> {
+  const images = Array.from(root.querySelectorAll("img"));
+  if (images.length === 0) return Promise.resolve();
+
+  return Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          const done = () => {
+            img.removeEventListener("load", done);
+            img.removeEventListener("error", done);
+            resolve();
+          };
+          img.addEventListener("load", done);
+          img.addEventListener("error", done);
+          setTimeout(done, 8000);
+        }),
+    ),
+  ).then(() => undefined);
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+/** Picks the highest render scale that keeps the canvas under browser limits. */
+function pickSafeScale(node: HTMLElement, desiredScale: number): number {
+  const width = node.scrollWidth;
+  const height = node.scrollHeight;
+  if (width <= 0 || height <= 0) return desiredScale;
+
+  const maxByWidth = MAX_CANVAS_DIMENSION / width;
+  const maxByHeight = MAX_CANVAS_DIMENSION / height;
+  const maxSafeScale = Math.min(maxByWidth, maxByHeight);
+
+  return Math.max(1, Math.min(desiredScale, maxSafeScale));
 }
 
 export function DownloadPdfButton({
@@ -23,9 +77,7 @@ export function DownloadPdfButton({
   async function handleDownload() {
     if (isGenerating) return;
 
-    const node =
-      targetRef?.current ??
-      (elementId ? document.getElementById(elementId) : null);
+    const node = targetRef?.current ?? (elementId ? document.getElementById(elementId) : null);
 
     if (!node) {
       console.error(
@@ -43,19 +95,41 @@ export function DownloadPdfButton({
         import("jspdf"),
       ]);
 
-      // Capture at high quality without changing layout
+      // Make sure fonts and any images (photo, icons) are fully painted
+      // before we screenshot — this is the #1 cause of blurry/missing
+      // content in html2canvas captures.
+      await waitForFonts();
+      await waitForImages(node);
+      await nextFrame();
+
+      // Aim high (4x = print-shop quality), but never exceed what the
+      // browser's canvas can actually hold.
+      const desiredScale = Math.max(4, window.devicePixelRatio * 2 || 4);
+      const scale = pickSafeScale(node, desiredScale);
+
       const canvas = await html2canvas(node, {
-        scale: 2, // 2 is more stable than 3 and still very sharp
+        scale,
         useCORS: true,
+        allowTaint: false,
         backgroundColor: "#ffffff",
         logging: false,
+        imageTimeout: 15000,
+        removeContainer: true,
         width: node.scrollWidth,
         height: node.scrollHeight,
         windowWidth: document.documentElement.clientWidth,
         windowHeight: document.documentElement.clientHeight,
         scrollX: -window.scrollX,
         scrollY: -window.scrollY,
+        onclone: (doc, el) => {
+          (el as HTMLElement).style.setProperty("print-color-adjust", "exact");
+          (el as HTMLElement).style.setProperty("-webkit-print-color-adjust", "exact");
+        },
       });
+
+      if (!canvas.width || !canvas.height) {
+        throw new Error("Could not capture resume — canvas came back empty");
+      }
 
       // How many pixels = 1mm at the captured width
       const pixelsPerMm = canvas.width / A4_WIDTH_MM;
@@ -72,19 +146,14 @@ export function DownloadPdfButton({
         compress: true,
       });
 
+      // PNG keeps text/lines lossless (no JPEG artifacting on crisp edges).
       const imageData = canvas.toDataURL("image/png", 1.0);
 
-      // Place the entire capture on the single page, exact size, no cropping
-      pdf.addImage(
-        imageData,
-        "PNG",
-        0,
-        0,
-        pageWidthMm,
-        pageHeightMm,
-        undefined,
-        "FAST",
-      );
+      // Place the entire capture on the single page, exact size, no cropping.
+      pdf.addImage(imageData, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
+
+      // Embed real resolution metadata so PDF viewers don't guess.
+      pdf.setProperties({ title: fileName });
 
       pdf.save(`${fileName}.pdf`);
     } catch (error) {

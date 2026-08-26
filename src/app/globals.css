@@ -258,3 +258,124 @@ html {
 html::-webkit-scrollbar {
   display: none;
 }
+
+/* ============================================================
+   PRINT – ONLY THE RESUME (FIXED PAGINATION)
+   ============================================================ */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide EVERYTHING by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the resume and everything inside it */
+  #resume-page,
+  #resume-page * {
+    visibility: visible !important;
+  }
+
+  /* Force the resume to sit at the top-left of the page */
+  #resume-page {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    background: white !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /*
+    THE ACTUAL FIX:
+    Flex/grid two-column layouts (sidebar + main) break unpredictably
+    across printed pages — each column can be cut at a different point,
+    which is what causes the sidebar and main content to desync and
+    leaves big blank gaps. Forcing the top-level resume container to
+    block flow (instead of flex/grid) during print makes the browser
+    paginate it as one continuous column, top to bottom, which is what
+    actually works reliably for print.
+  */
+  #resume-page {
+    display: block !important;
+  }
+
+  #resume-page > * {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /*
+    If your sidebar MUST stay visually side-by-side on screen but you
+    want it to just print correctly, target its actual class/id here
+    instead of the generic rule above, e.g.:
+
+    #resume-sidebar { display: block !important; width: 100% !important; }
+    #resume-main    { display: block !important; width: 100% !important; }
+  */
+
+  /* Never split a card/section/row across two pages */
+  section,
+  article,
+  .card,
+  .resume-item,
+  .experience-item,
+  .project-item,
+  li {
+    break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Keep headings attached to the content that follows them */
+  h1,
+  h2,
+  h3,
+  h4 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Avoid orphan/widow single lines stranded across a page break */
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Hide common website elements just in case */
+  header,
+  nav,
+  footer,
+  .footer,
+  [class*="footer"],
+  [id*="footer"],
+  .sidebar,
+  .navbar,
+  .header,
+  button,
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}

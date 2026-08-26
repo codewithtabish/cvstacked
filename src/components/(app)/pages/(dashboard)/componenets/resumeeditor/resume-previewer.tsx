@@ -155,7 +155,7 @@ export function ResumePreview({ resume, id, onChange }: ResumePreviewProps) {
               DOWNLOAD PDF
           ====================================================== */}
 
-          <DownloadPdfButton elementId={PREVIEW_ELEMENT_ID} fileName={fileName} />
+          <DownloadPdfButton elementId={PREVIEW_ELEMENT_ID} fileName="shhshs" />
         </div>
 
         {/* ========================================================
@@ -295,39 +295,7 @@ export function ResumePreview({ resume, id, onChange }: ResumePreviewProps) {
       {/* ============================================================
           PAPER AREA
       ============================================================ */}
-
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div
-          className="
-            flex
-            min-h-full
-            justify-center
-            px-3
-            py-6
-            sm:px-6
-            sm:py-10
-          "
-        >
-          <div
-            className="
-              origin-top
-              shadow-xl
-              transition-transform
-              duration-200
-              ease-out
-            "
-            style={{
-              transform: `scale(${zoom})`,
-              width: "210mm",
-              minHeight: "297mm",
-            }}
-          >
-            <div className="bg-re">
-              <TemplateComponent resume={currentResume} id={PREVIEW_ELEMENT_ID} />
-            </div>
-          </div>
-        </div>
-      </div>
+      <TemplateComponent resume={currentResume} id={PREVIEW_ELEMENT_ID} />
     </div>
   );
 }

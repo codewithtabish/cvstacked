@@ -1,6 +1,6 @@
-import AllTemplateShow from "@/components/(app)/pages/templatespage/all-template-show";
-import TemplatesHeader from "@/components/(app)/pages/templatespage/template-header";
-import { Metadata } from "next";
+import type { Metadata } from "next";
+
+import TemplatePageTemplates from "@/components/(app)/pages/templatespage/template-page-templatelist";
 
 export const metadata: Metadata = {
   title: "Resume Templates",
@@ -17,15 +17,10 @@ export const metadata: Metadata = {
   },
 };
 
-const TemplatePage = () => {
+export default function TemplatePage() {
   return (
-    <main>
-      <TemplatesHeader />
-      <div className="px-4 pb-12 sm:px-6 lg:px-8">
-        <AllTemplateShow />
-      </div>
+    <main className="min-h-screen">
+      <TemplatePageTemplates />
     </main>
   );
-};
-
-export default TemplatePage;
+}

@@ -1,83 +1,134 @@
 "use client";
 
 import Image from "next/image";
+
 import type { CSSProperties, ReactNode } from "react";
 
-import { ResumeData } from "@/data/resume";
-import { DEFAULT_RESUME_DESIGN, RESUME_FONT_FAMILIES, RESUME_THEMES } from "@/data/resume-design";
+import type { ResumeData } from "@/data/resume";
 
-interface TemplateFiveProps {
+import { DEFAULT_RESUME_DESIGN, RESUME_THEMES } from "@/data/resume-design";
+
+interface TemplateSixProps {
   resume: ResumeData;
   id?: string;
 }
 
-function getTypographyScale(scale: string) {
-  switch (scale) {
-    case "compact":
-      return {
-        name: "28px",
-        jobTitle: "11px",
-        body: "9.5px",
-        small: "8px",
-        section: "10px",
-        lineHeight: 1.45,
-        sectionGap: "14px",
-        itemGap: "9px",
-      };
+/* ============================================================
+   TYPOGRAPHY — TEMPLATE SIX
+   ============================================================
+   IMPORTANT:
+   - Font family is STATIC.
+   - Font sizes are STATIC.
+   - Typography does NOT depend on resume design settings.
+   - ONLY resume.themeId is dynamic.
+   - Sizes are intentionally comfortable for A4 printing.
+   ============================================================ */
 
-    case "comfortable":
-      return {
-        name: "34px",
-        jobTitle: "13px",
-        body: "10.5px",
-        small: "8.5px",
-        section: "11px",
-        lineHeight: 1.6,
-        sectionGap: "20px",
-        itemGap: "13px",
-      };
+const TYPOGRAPHY = {
+  /* Main identity */
+  name: "30pt",
+  jobTitle: "11pt",
 
-    case "standard":
-    default:
-      return {
-        name: "31px",
-        jobTitle: "12px",
-        body: "10px",
-        small: "8px",
-        section: "10.5px",
-        lineHeight: 1.52,
-        sectionGap: "17px",
-        itemGap: "11px",
-      };
-  }
+  /* Section hierarchy */
+  section: "10.5pt",
+
+  /* Main content */
+  body: "10pt",
+
+  /* Secondary information */
+  small: "9.5pt",
+
+  /* Small metadata */
+  tiny: "9pt",
+
+  /* Line heights */
+  bodyLineHeight: 1.5,
+  compactLineHeight: 1.4,
+
+  /* Spacing */
+  sectionGap: "16px",
+  itemGap: "11px",
+} as const;
+
+/* ============================================================
+   FONT FAMILY — STATIC
+   ============================================================ */
+
+const FONT_FAMILY =
+  '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif';
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
+function safeArray<T>(value: T[] | undefined | null): T[] {
+  return Array.isArray(value) ? value : [];
 }
 
-function SectionHeading({ children, accent }: { children: ReactNode; accent: string }) {
+function cleanText(value?: string | null): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function cleanUrl(value?: string | null): string {
+  const trimmed = cleanText(value);
+
+  if (!trimmed) return "";
+
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
+function displayUrl(value?: string | null): string {
+  const trimmed = cleanText(value);
+
+  if (!trimmed) return "";
+
+  return trimmed
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/$/, "");
+}
+
+/* ============================================================
+   THEME RESOLVER
+   ============================================================ */
+
+function resolveThemeId(themeId?: string | null): string {
+  const id = typeof themeId === "string" ? themeId.trim() : "";
+
+  if (id && RESUME_THEMES[id]) {
+    return id;
+  }
+
+  const defaultId = DEFAULT_RESUME_DESIGN.themeId;
+
+  if (defaultId && RESUME_THEMES[defaultId]) {
+    return defaultId;
+  }
+
+  return "slate";
+}
+
+/* ============================================================
+   SECTION TITLE
+   ============================================================ */
+
+function SectionTitle({ children, accent }: { children: ReactNode; accent: string }) {
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
         marginBottom: "9px",
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          width: "20px",
-          height: "3px",
-          backgroundColor: accent,
-          flexShrink: 0,
-        }}
-      />
-
       <h2
         style={{
           margin: 0,
-          color: "#111827",
-          fontSize: "10.5px",
-          fontWeight: 800,
+          color: "#0F172A",
+          fontSize: TYPOGRAPHY.section,
+          fontWeight: 700,
           letterSpacing: "0.14em",
           lineHeight: 1.2,
           textTransform: "uppercase",
@@ -89,27 +140,36 @@ function SectionHeading({ children, accent }: { children: ReactNode; accent: str
       <div
         aria-hidden="true"
         style={{
-          height: "1px",
-          flex: 1,
-          backgroundColor: "#E5E7EB",
+          marginTop: "5px",
+          height: "2px",
+          width: "100%",
+          background: `linear-gradient(to right, ${accent} 0 38px, #E5E7EB 38px 100%)`,
         }}
       />
     </div>
   );
 }
 
+/* ============================================================
+   BULLET LIST
+   ============================================================ */
+
 function BulletList({
   items,
   textColor,
-  fontSize,
-  lineHeight,
+  fontSize = TYPOGRAPHY.body,
+  lineHeight = TYPOGRAPHY.bodyLineHeight,
 }: {
   items: string[];
   textColor: string;
-  fontSize: string;
-  lineHeight: number;
+  fontSize?: string;
+  lineHeight?: number;
 }) {
-  if (!items.length) return null;
+  const valid = items.map(cleanText).filter(Boolean);
+
+  if (!valid.length) {
+    return null;
+  }
 
   return (
     <ul
@@ -122,7 +182,7 @@ function BulletList({
         gap: "3px",
       }}
     >
-      {items.map((item, index) => (
+      {valid.map((item, index) => (
         <li
           key={`${item}-${index}`}
           style={{
@@ -132,17 +192,19 @@ function BulletList({
             color: textColor,
             fontSize,
             lineHeight,
+            overflowWrap: "anywhere",
           }}
         >
           <span
             aria-hidden="true"
             style={{
-              width: "4px",
-              height: "4px",
-              marginTop: "5px",
-              borderRadius: "50%",
+              width: "3px",
+              height: "3px",
+              marginTop: "7px",
+              borderRadius: "999px",
               backgroundColor: textColor,
               flexShrink: 0,
+              opacity: 0.75,
             }}
           />
 
@@ -153,1053 +215,1164 @@ function BulletList({
   );
 }
 
+/* ============================================================
+   DATE RANGE
+   ============================================================ */
+
 function DateRange({
   startDate,
   endDate,
   current,
   color,
-  fontSize,
 }: {
   startDate?: string;
   endDate?: string;
   current?: boolean;
   color: string;
-  fontSize: string;
 }) {
-  if (!startDate && !endDate) return null;
+  const start = cleanText(startDate);
+  const end = current ? "Present" : cleanText(endDate);
 
-  const end = current ? "Present" : endDate;
+  if (!start && !end) {
+    return null;
+  }
 
   return (
     <span
       style={{
         color,
-        fontSize,
+        fontSize: TYPOGRAPHY.small,
         fontWeight: 600,
         whiteSpace: "nowrap",
         lineHeight: 1.35,
+        flexShrink: 0,
+        fontVariantNumeric: "tabular-nums",
       }}
     >
-      {startDate}
-      {startDate && end ? " — " : ""}
+      {start}
+      {start && end ? " – " : ""}
       {end}
     </span>
   );
 }
 
-function ContactItem({ value, accent }: { value?: string; accent: string }) {
-  if (!value) return null;
+/* ============================================================
+   LINK
+   ============================================================ */
+
+function LinkText({
+  href,
+  children,
+  color,
+  fontSize = TYPOGRAPHY.small,
+  fontWeight = 600,
+}: {
+  href?: string;
+  children: ReactNode;
+  color: string;
+  fontSize?: string;
+  fontWeight?: number;
+}) {
+  const url = cleanUrl(href);
+
+  if (!url) {
+    return null;
+  }
 
   return (
-    <span
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "5px",
-        color: "#4B5563",
-        fontSize: "8px",
+        color,
+        fontSize,
+        fontWeight,
         lineHeight: 1.4,
+        textDecoration: "none",
         overflowWrap: "anywhere",
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          width: "4px",
-          height: "4px",
-          borderRadius: "50%",
-          backgroundColor: accent,
-          flexShrink: 0,
-        }}
-      />
-      {value}
-    </span>
+      {children}
+    </a>
   );
 }
 
-export function TemplateSix({ resume, id = "resume-page" }: TemplateFiveProps) {
-  const theme = RESUME_THEMES[resume.themeId] ?? RESUME_THEMES[DEFAULT_RESUME_DESIGN.themeId];
+/* ============================================================
+   TEMPLATE SIX
+   Typographic Editorial — Premium A4
+   ============================================================ */
 
-  const font =
-    RESUME_FONT_FAMILIES[resume.fontFamilyId] ??
-    RESUME_FONT_FAMILIES[DEFAULT_RESUME_DESIGN.fontFamilyId];
+export function TemplateSix({ resume, id = "resume-page" }: TemplateSixProps) {
+  /* ==========================================================
+     THEME ONLY
+     ========================================================== */
 
-  const typography = getTypographyScale(
-    resume.typographyScale || DEFAULT_RESUME_DESIGN.typographyScale,
-  );
+  const resolvedThemeId = resolveThemeId(resume.themeId);
+
+  const theme = RESUME_THEMES[resolvedThemeId] ?? RESUME_THEMES.slate ?? RESUME_THEMES.blue;
 
   const colors = theme.colors;
+
+  /* ==========================================================
+     STATIC FONT
+     ========================================================== */
+
+  const fontFamily = FONT_FAMILY;
+
+  /* ==========================================================
+     DATA
+     ========================================================== */
+
+  const experience = safeArray(resume.experience);
+  const education = safeArray(resume.education);
+  const skills = safeArray(resume.skills);
+  const projects = safeArray(resume.projects);
+  const certifications = safeArray(resume.certifications);
+  const awards = safeArray(resume.awards);
+  const languages = safeArray(resume.languages);
+  const publications = safeArray(resume.publications);
+  const volunteer = safeArray(resume.volunteer);
+  const references = safeArray(resume.references);
+  const interests = safeArray(resume.interests);
+  const customSections = safeArray(resume.customSections);
+
+  const summary = cleanText(resume.summary);
+
+  const projectTechnologies = (project: (typeof projects)[number]): string[] => {
+    return safeArray(project.technologies)
+      .map((technology) => cleanText(technology))
+      .filter(Boolean);
+  };
+
+  /* ==========================================================
+     PERSONAL
+     ========================================================== */
+
+  const firstName = cleanText(resume.personal.firstName) || "Your";
+  const lastName = cleanText(resume.personal.lastName) || "Name";
+
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  const hasPhoto = Boolean(cleanText(resume.personal.photo));
+
+  /* ==========================================================
+     CONTACT
+     ========================================================== */
+
+  const contactParts: {
+    key: string;
+    href?: string;
+    text: string;
+  }[] = [];
+
+  if (cleanText(resume.personal.email)) {
+    contactParts.push({
+      key: "email",
+      href: `mailto:${resume.personal.email}`,
+      text: resume.personal.email!,
+    });
+  }
+
+  if (cleanText(resume.personal.phone)) {
+    contactParts.push({
+      key: "phone",
+      href: `tel:${resume.personal.phone}`,
+      text: resume.personal.phone!,
+    });
+  }
+
+  if (cleanText(resume.personal.location)) {
+    contactParts.push({
+      key: "location",
+      text: resume.personal.location!,
+    });
+  }
+
+  if (cleanText(resume.personal.website)) {
+    contactParts.push({
+      key: "website",
+      href: resume.personal.website!,
+      text: displayUrl(resume.personal.website),
+    });
+  }
+
+  if (cleanText(resume.personal.linkedin)) {
+    contactParts.push({
+      key: "linkedin",
+      href: resume.personal.linkedin!,
+      text: displayUrl(resume.personal.linkedin),
+    });
+  }
+
+  if (cleanText(resume.personal.github)) {
+    contactParts.push({
+      key: "github",
+      href: resume.personal.github!,
+      text: displayUrl(resume.personal.github),
+    });
+  }
+
+  if (cleanText(resume.personal.portfolio)) {
+    contactParts.push({
+      key: "portfolio",
+      href: resume.personal.portfolio!,
+      text: displayUrl(resume.personal.portfolio),
+    });
+  }
+
+  /* ==========================================================
+     A4 PAGE
+     ========================================================== */
 
   const pageStyle: CSSProperties = {
     width: "210mm",
     minWidth: "210mm",
     minHeight: "297mm",
     boxSizing: "border-box",
-    backgroundColor: "#ffffff",
-    fontFamily: font.family,
-    padding: "13mm 14mm 12mm",
+    display: "flex",
+    flexDirection: "column",
     margin: "0 auto",
-    overflow: "visible",
+    backgroundColor: "#FFFFFF",
     color: colors.text,
+    fontFamily,
+    overflow: "visible",
+    WebkitPrintColorAdjust: "exact",
+    printColorAdjust: "exact",
   };
 
   const bodyTextStyle: CSSProperties = {
     margin: 0,
     color: colors.textMuted,
-    fontSize: typography.body,
-    lineHeight: typography.lineHeight,
+    fontSize: TYPOGRAPHY.body,
+    lineHeight: TYPOGRAPHY.bodyLineHeight,
+    overflowWrap: "anywhere",
   };
 
   return (
     <article
       id={id}
       className="resume-page"
+      data-template="typographic-editorial"
+      data-template-id="template-six"
+      data-theme={resolvedThemeId}
+      data-font="palatino"
+      data-typography-scale="static"
       style={pageStyle}
-      data-template="technical"
-      data-template-id="technical"
-      data-theme={resume.themeId}
-      data-font={resume.fontFamilyId}
-      data-typography-scale={resume.typographyScale}
     >
-      {/* ============================================================
-          TOP HEADER
-          ============================================================ */}
+      {/* ======================================================
+          HEADER
+          ====================================================== */}
 
       <header
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          gap: "24px",
-          paddingBottom: "13px",
-          borderBottom: `1px solid ${colors.border}`,
+          backgroundColor: colors.accent,
+          color: "#FFFFFF",
+          padding: "15mm 15mm 13mm",
+          boxSizing: "border-box",
         }}
       >
         <div
           style={{
-            minWidth: 0,
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "18px",
           }}
         >
           <div
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "7px",
-              marginBottom: "6px",
+              minWidth: 0,
+              flex: 1,
             }}
           >
-            <span
-              aria-hidden="true"
+            <h1
               style={{
-                width: "24px",
-                height: "3px",
-                backgroundColor: colors.accent,
-              }}
-            />
-
-            <span
-              style={{
-                color: colors.textSubtle,
-                fontSize: typography.small,
-                fontWeight: 800,
-                letterSpacing: "0.18em",
-                lineHeight: 1.2,
-                textTransform: "uppercase",
+                margin: 0,
+                color: "#FFFFFF",
+                fontSize: TYPOGRAPHY.name,
+                fontWeight: 400,
+                letterSpacing: "-0.025em",
+                lineHeight: 1.02,
+                overflowWrap: "anywhere",
               }}
             >
-              Curriculum Vitae
-            </span>
+              <span style={{ fontWeight: 300 }}>{firstName}</span>
+
+              <br />
+
+              <span style={{ fontWeight: 700 }}>{lastName}</span>
+            </h1>
+
+            {cleanText(resume.personal.jobTitle) && (
+              <p
+                style={{
+                  margin: "9px 0 0",
+                  color: "rgba(255,255,255,0.94)",
+                  fontSize: TYPOGRAPHY.jobTitle,
+                  fontWeight: 600,
+                  letterSpacing: "0.14em",
+                  lineHeight: 1.35,
+                  textTransform: "uppercase",
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {resume.personal.jobTitle}
+              </p>
+            )}
           </div>
 
-          <h1
-            style={{
-              margin: 0,
-              color: colors.text,
-              fontSize: typography.name,
-              fontWeight: 850,
-              letterSpacing: "-0.04em",
-              lineHeight: 1,
-            }}
-          >
-            {resume.personal.firstName || "Your"} {resume.personal.lastName || "Name"}
-          </h1>
-
-          {resume.personal.jobTitle && (
-            <p
+          {hasPhoto && (
+            <div
               style={{
-                margin: "7px 0 0",
-                color: colors.accent,
-                fontSize: typography.jobTitle,
-                fontWeight: 750,
-                letterSpacing: "0.025em",
-                lineHeight: 1.3,
+                position: "relative",
+                width: "72px",
+                height: "72px",
+                flexShrink: 0,
+                overflow: "hidden",
+                borderRadius: "3px",
+                border: "1px solid rgba(255,255,255,0.45)",
+                backgroundColor: "rgba(255,255,255,0.08)",
               }}
             >
-              {resume.personal.jobTitle}
-            </p>
+              <Image
+                src={resume.personal.photo}
+                alt={fullName}
+                fill
+                sizes="72px"
+                unoptimized
+                style={{
+                  objectFit: "cover",
+                }}
+              />
+            </div>
           )}
         </div>
 
-        {resume.personal.photo && (
+        {contactParts.length > 0 && (
           <div
             style={{
-              width: "70px",
-              height: "70px",
-              flexShrink: 0,
-              position: "relative",
-              overflow: "hidden",
-              borderRadius: "6px",
-              border: `1px solid ${colors.border}`,
-              backgroundColor: colors.surface,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: "3px 0",
+              marginTop: "13px",
+              paddingTop: "11px",
+              borderTop: "1px solid rgba(255,255,255,0.3)",
             }}
           >
-            <Image
-              src={resume.personal.photo}
-              alt={`${resume.personal.firstName || "Your"} ${resume.personal.lastName || "Name"}`}
-              fill
-              sizes="70px"
-              style={{
-                objectFit: "cover",
-              }}
-            />
+            {contactParts.map((part, index) => (
+              <span
+                key={part.key}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  color: "rgba(255,255,255,0.92)",
+                  fontSize: TYPOGRAPHY.small,
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
+              >
+                {part.href ? (
+                  <LinkText
+                    href={part.href}
+                    color="rgba(255,255,255,0.92)"
+                    fontSize={TYPOGRAPHY.small}
+                    fontWeight={500}
+                  >
+                    {part.text}
+                  </LinkText>
+                ) : (
+                  part.text
+                )}
+
+                {index < contactParts.length - 1 && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      margin: "0 8px",
+                      width: "3px",
+                      height: "3px",
+                      borderRadius: "999px",
+                      backgroundColor: "rgba(255,255,255,0.75)",
+                      opacity: 0.9,
+                    }}
+                  />
+                )}
+              </span>
+            ))}
           </div>
         )}
       </header>
 
-      {/* ============================================================
-          CONTACT BAR
-          ============================================================ */}
+      {/* ======================================================
+          BODY
+          ====================================================== */}
 
       <div
         style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: "5px 15px",
-          padding: "8px 0 0",
-        }}
-      >
-        <ContactItem value={resume.personal.email} accent={colors.accent} />
-
-        <ContactItem value={resume.personal.phone} accent={colors.accent} />
-
-        <ContactItem value={resume.personal.location} accent={colors.accent} />
-
-        <ContactItem value={resume.personal.website} accent={colors.accent} />
-
-        <ContactItem value={resume.personal.linkedin} accent={colors.accent} />
-
-        <ContactItem value={resume.personal.github} accent={colors.accent} />
-      </div>
-
-      {/* ============================================================
-          MAIN CONTENT
-          ============================================================ */}
-
-      <main
-        style={{
+          flex: 1,
+          padding: "15px 15mm 13mm",
+          boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
-          gap: typography.sectionGap,
-          marginTop: "17px",
         }}
       >
-        {/* ==========================================================
-            PROFILE
-            ========================================================== */}
+        <main
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: TYPOGRAPHY.sectionGap,
+            minWidth: 0,
+            flex: 1,
+          }}
+        >
+          {/* ==================================================
+              PROFILE
+              ================================================== */}
 
-        {resume.summary.trim() && (
-          <section>
-            <SectionHeading accent={colors.accent}>Profile</SectionHeading>
+          {summary && (
+            <section>
+              <SectionTitle accent={colors.accent}>Profile</SectionTitle>
 
-            <p style={bodyTextStyle}>{resume.summary}</p>
-          </section>
-        )}
+              <p style={bodyTextStyle}>{summary}</p>
+            </section>
+          )}
 
-        {/* ==========================================================
-            EXPERIENCE
-            ========================================================== */}
+          {/* ==================================================
+              EXPERIENCE
+              ================================================== */}
 
-        {resume.experience.length > 0 && (
-          <section>
-            <SectionHeading accent={colors.accent}>Experience</SectionHeading>
+          {experience.length > 0 && (
+            <section>
+              <SectionTitle accent={colors.accent}>Experience</SectionTitle>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: typography.itemGap,
-              }}
-            >
-              {resume.experience.map((experience) => (
-                <div
-                  key={experience.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "14px 1fr",
-                    gap: "9px",
-                  }}
-                >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: TYPOGRAPHY.itemGap,
+                }}
+              >
+                {experience.map((item) => (
                   <div
-                    aria-hidden="true"
+                    key={item.id}
                     style={{
-                      position: "relative",
-                      display: "flex",
-                      justifyContent: "center",
+                      breakInside: "avoid",
                     }}
                   >
-                    <div
-                      style={{
-                        width: "7px",
-                        height: "7px",
-                        marginTop: "4px",
-                        borderRadius: "50%",
-                        backgroundColor: colors.accent,
-                        position: "relative",
-                        zIndex: 1,
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "10px",
-                        bottom: "-14px",
-                        width: "1px",
-                        backgroundColor: colors.accentLight,
-                      }}
-                    />
-                  </div>
-
-                  <div>
                     <div
                       style={{
                         display: "flex",
                         alignItems: "flex-start",
                         justifyContent: "space-between",
-                        gap: "14px",
+                        gap: "16px",
                       }}
                     >
                       <div
                         style={{
                           minWidth: 0,
+                          flex: 1,
                         }}
                       >
                         <h3
                           style={{
                             margin: 0,
                             color: colors.text,
-                            fontSize: typography.body,
-                            fontWeight: 800,
-                            lineHeight: 1.35,
+                            fontSize: TYPOGRAPHY.body,
+                            fontWeight: 700,
+                            lineHeight: 1.3,
+                            overflowWrap: "anywhere",
                           }}
                         >
-                          {experience.position}
+                          {item.position}
                         </h3>
 
-                        <p
-                          style={{
-                            margin: "2px 0 0",
-                            color: colors.accent,
-                            fontSize: typography.small,
-                            fontWeight: 750,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          {experience.company}
-                          {experience.location ? ` · ${experience.location}` : ""}
-                        </p>
+                        {cleanText(item.company) && (
+                          <p
+                            style={{
+                              margin: "2px 0 0",
+                              color: colors.accent,
+                              fontSize: TYPOGRAPHY.small,
+                              fontWeight: 600,
+                              lineHeight: 1.35,
+                              overflowWrap: "anywhere",
+                            }}
+                          >
+                            {item.company}
+                            {item.location ? ` · ${item.location}` : ""}
+                          </p>
+                        )}
                       </div>
 
                       <DateRange
-                        startDate={experience.startDate}
-                        endDate={experience.endDate}
-                        current={experience.current}
+                        startDate={item.startDate}
+                        endDate={item.endDate}
+                        current={item.current}
                         color={colors.textSubtle}
-                        fontSize={typography.small}
                       />
                     </div>
 
-                    {experience.description && (
+                    {cleanText(item.description) && (
                       <p
                         style={{
                           ...bodyTextStyle,
                           marginTop: "5px",
                         }}
                       >
-                        {experience.description}
+                        {item.description}
                       </p>
                     )}
 
-                    <BulletList
-                      items={experience.achievements || []}
-                      textColor={colors.textMuted}
-                      fontSize={typography.body}
-                      lineHeight={typography.lineHeight}
-                    />
+                    <BulletList items={safeArray(item.achievements)} textColor={colors.textMuted} />
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                ))}
+              </div>
+            </section>
+          )}
 
-        {/* ==========================================================
-            TWO COLUMN — EDUCATION + SKILLS
-            ========================================================== */}
+          {/* ==================================================
+              EDUCATION
+              ================================================== */}
 
-        {(resume.education.length > 0 || resume.skills.length > 0) && (
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "24px",
-            }}
-          >
-            {/* EDUCATION */}
+          {education.length > 0 && (
+            <section>
+              <SectionTitle accent={colors.accent}>Education</SectionTitle>
 
-            {resume.education.length > 0 && (
-              <div>
-                <SectionHeading accent={colors.accent}>Education</SectionHeading>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: TYPOGRAPHY.itemGap,
+                }}
+              >
+                {education.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      breakInside: "avoid",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: "16px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
+                        <h3
+                          style={{
+                            margin: 0,
+                            color: colors.text,
+                            fontSize: TYPOGRAPHY.body,
+                            fontWeight: 700,
+                            lineHeight: 1.3,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {item.degree}
+                          {item.fieldOfStudy ? ` — ${item.fieldOfStudy}` : ""}
+                        </h3>
+
+                        <p
+                          style={{
+                            margin: "2px 0 0",
+                            color: colors.accent,
+                            fontSize: TYPOGRAPHY.small,
+                            fontWeight: 600,
+                            lineHeight: 1.35,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {item.institution}
+                          {item.location ? ` · ${item.location}` : ""}
+                        </p>
+                      </div>
+
+                      <DateRange
+                        startDate={item.startDate}
+                        endDate={item.endDate}
+                        current={item.current}
+                        color={colors.textSubtle}
+                      />
+                    </div>
+
+                    {(cleanText(item.grade) || cleanText(item.description)) && (
+                      <p
+                        style={{
+                          ...bodyTextStyle,
+                          marginTop: "5px",
+                        }}
+                      >
+                        {[item.grade, item.description].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ==================================================
+              PROJECTS
+              ================================================== */}
+
+          {projects.length > 0 && (
+            <section>
+              <SectionTitle accent={colors.accent}>Projects</SectionTitle>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                {projects.map((project) => {
+                  const technologies = projectTechnologies(project);
+
+                  return (
+                    <div
+                      key={project.id}
+                      style={{
+                        breakInside: "avoid",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          justifyContent: "space-between",
+                          gap: "14px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            minWidth: 0,
+                            flex: 1,
+                          }}
+                        >
+                          <h3
+                            style={{
+                              margin: 0,
+                              color: colors.text,
+                              fontSize: TYPOGRAPHY.body,
+                              fontWeight: 700,
+                              lineHeight: 1.3,
+                              overflowWrap: "anywhere",
+                            }}
+                          >
+                            {project.name}
+                          </h3>
+
+                          {cleanText(project.role) && (
+                            <p
+                              style={{
+                                margin: "2px 0 0",
+                                color: colors.accent,
+                                fontSize: TYPOGRAPHY.small,
+                                fontWeight: 600,
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {project.role}
+                            </p>
+                          )}
+                        </div>
+
+                        <DateRange
+                          startDate={project.startDate}
+                          endDate={project.endDate}
+                          color={colors.textSubtle}
+                        />
+                      </div>
+
+                      {cleanText(project.description) && (
+                        <p
+                          style={{
+                            ...bodyTextStyle,
+                            marginTop: "5px",
+                          }}
+                        >
+                          {project.description}
+                        </p>
+                      )}
+
+                      {technologies.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "4px 6px",
+                            marginTop: "6px",
+                          }}
+                        >
+                          {technologies.map((tech) => (
+                            <span
+                              key={tech}
+                              style={{
+                                padding: "3px 7px",
+                                borderRadius: "1px",
+                                backgroundColor: colors.background,
+                                border: `1px solid ${colors.border}`,
+                                color: colors.textMuted,
+                                fontSize: TYPOGRAPHY.tiny,
+                                fontWeight: 600,
+                                lineHeight: 1.3,
+                                letterSpacing: "0.01em",
+                              }}
+                            >
+                              {tech}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {safeArray(project.achievements).length > 0 && (
+                        <BulletList
+                          items={safeArray(project.achievements)}
+                          textColor={colors.textMuted}
+                          fontSize={TYPOGRAPHY.small}
+                          lineHeight={1.4}
+                        />
+                      )}
+
+                      {(cleanText(project.url) || cleanText(project.github)) && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "6px 12px",
+                            marginTop: "6px",
+                          }}
+                        >
+                          {cleanText(project.url) && (
+                            <LinkText
+                              href={project.url}
+                              color={colors.accent}
+                              fontSize={TYPOGRAPHY.small}
+                            >
+                              {displayUrl(project.url)}
+                            </LinkText>
+                          )}
+
+                          {cleanText(project.github) && (
+                            <LinkText
+                              href={project.github}
+                              color={colors.accent}
+                              fontSize={TYPOGRAPHY.small}
+                            >
+                              {displayUrl(project.github)}
+                            </LinkText>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ==================================================
+              SKILLS + LANGUAGES + INTERESTS
+              ================================================== */}
+
+          {(skills.length > 0 || languages.length > 0 || interests.length > 0) && (
+            <section>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    skills.length > 0 && (languages.length > 0 || interests.length > 0)
+                      ? "minmax(0, 1.45fr) minmax(0, 1fr)"
+                      : "minmax(0, 1fr)",
+                  gap: "16px 22px",
+                }}
+              >
+                {skills.length > 0 && (
+                  <div>
+                    <SectionTitle accent={colors.accent}>Skills</SectionTitle>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "5px 6px",
+                      }}
+                    >
+                      {skills.map((skill) => (
+                        <span
+                          key={skill.id}
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: "1px",
+                            backgroundColor: colors.background,
+                            border: `1px solid ${colors.border}`,
+                            color: colors.text,
+                            fontSize: TYPOGRAPHY.small,
+                            fontWeight: 600,
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {skill.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "9px",
+                    gap: "13px",
                   }}
                 >
-                  {resume.education.map((education) => (
-                    <div key={education.id}>
+                  {languages.length > 0 && (
+                    <div>
+                      <SectionTitle accent={colors.accent}>Languages</SectionTitle>
+
                       <div
                         style={{
                           display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          gap: "10px",
+                          flexDirection: "column",
+                          gap: "5px",
                         }}
                       >
-                        <div>
-                          <h3
+                        {languages.map((lang) => (
+                          <div
+                            key={lang.id}
                             style={{
-                              margin: 0,
-                              color: colors.text,
-                              fontSize: typography.body,
-                              fontWeight: 800,
-                              lineHeight: 1.35,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: "8px",
                             }}
                           >
-                            {education.degree}
-                            {education.fieldOfStudy ? ` — ${education.fieldOfStudy}` : ""}
-                          </h3>
+                            <span
+                              style={{
+                                color: colors.text,
+                                fontSize: TYPOGRAPHY.small,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {lang.name}
+                            </span>
 
+                            {cleanText(lang.proficiency) && (
+                              <span
+                                style={{
+                                  color: colors.textSubtle,
+                                  fontSize: TYPOGRAPHY.tiny,
+                                }}
+                              >
+                                {lang.proficiency}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {interests.length > 0 && (
+                    <div>
+                      <SectionTitle accent={colors.accent}>Interests</SectionTitle>
+
+                      <p
+                        style={{
+                          margin: 0,
+                          color: colors.textMuted,
+                          fontSize: TYPOGRAPHY.small,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {interests.filter(Boolean).join("  ·  ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ==================================================
+              CERTIFICATIONS + AWARDS
+              ================================================== */}
+
+          {(certifications.length > 0 || awards.length > 0) && (
+            <section>
+              <SectionTitle accent={colors.accent}>Certifications & Awards</SectionTitle>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    certifications.length > 0 && awards.length > 0
+                      ? "repeat(2, minmax(0, 1fr))"
+                      : "minmax(0, 1fr)",
+                  gap: "12px 18px",
+                }}
+              >
+                {certifications.length > 0 && (
+                  <div>
+                    {certifications.map((cert) => (
+                      <div
+                        key={cert.id}
+                        style={{
+                          marginBottom: "8px",
+                          breakInside: "avoid",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            margin: 0,
+                            color: colors.text,
+                            fontSize: TYPOGRAPHY.body,
+                            fontWeight: 700,
+                            lineHeight: 1.3,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {cert.name}
+                        </h3>
+
+                        {(cleanText(cert.issuer) || cleanText(cert.issueDate)) && (
                           <p
                             style={{
                               margin: "2px 0 0",
-                              color: colors.accent,
-                              fontSize: typography.small,
-                              fontWeight: 700,
+                              color: colors.textMuted,
+                              fontSize: TYPOGRAPHY.small,
+                              lineHeight: 1.35,
                             }}
                           >
-                            {education.institution}
-                            {education.location ? ` · ${education.location}` : ""}
+                            {cert.issuer}
+                            {cert.issuer && cert.issueDate ? " · " : ""}
+                            {cert.issueDate}
                           </p>
-                        </div>
-
-                        <DateRange
-                          startDate={education.startDate}
-                          endDate={education.endDate}
-                          current={education.current}
-                          color={colors.textSubtle}
-                          fontSize={typography.small}
-                        />
+                        )}
                       </div>
+                    ))}
+                  </div>
+                )}
 
-                      {(education.grade || education.description) && (
-                        <p
+                {awards.length > 0 && (
+                  <div>
+                    {awards.map((award) => (
+                      <div
+                        key={award.id}
+                        style={{
+                          marginBottom: "8px",
+                          breakInside: "avoid",
+                        }}
+                      >
+                        <h3
                           style={{
-                            ...bodyTextStyle,
-                            marginTop: "4px",
+                            margin: 0,
+                            color: colors.text,
+                            fontSize: TYPOGRAPHY.body,
+                            fontWeight: 700,
+                            lineHeight: 1.3,
+                            overflowWrap: "anywhere",
                           }}
                         >
-                          {[education.grade, education.description].filter(Boolean).join(" · ")}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                          {award.title}
+                        </h3>
+
+                        {(cleanText(award.issuer) || cleanText(award.date)) && (
+                          <p
+                            style={{
+                              margin: "2px 0 0",
+                              color: colors.textMuted,
+                              fontSize: TYPOGRAPHY.small,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {award.issuer}
+                            {award.issuer && award.date ? " · " : ""}
+                            {award.date}
+                          </p>
+                        )}
+
+                        {cleanText(award.description) && (
+                          <p
+                            style={{
+                              ...bodyTextStyle,
+                              marginTop: "4px",
+                            }}
+                          >
+                            {award.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </section>
+          )}
 
-            {/* SKILLS */}
+          {/* ==================================================
+              PUBLICATIONS
+              ================================================== */}
 
-            {resume.skills.length > 0 && (
-              <div>
-                <SectionHeading accent={colors.accent}>Skills</SectionHeading>
+          {publications.length > 0 && (
+            <section>
+              <SectionTitle accent={colors.accent}>Publications</SectionTitle>
 
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "5px",
-                  }}
-                >
-                  {resume.skills.map((skill) => (
-                    <span
-                      key={skill.id}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        padding: "5px 7px",
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: "4px",
-                        backgroundColor: colors.surface,
-                        color: colors.text,
-                        fontSize: typography.small,
-                        fontWeight: 700,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {skill.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* ==========================================================
-            PROJECTS
-            ========================================================== */}
-
-        {resume.projects.length > 0 && (
-          <section>
-            <SectionHeading accent={colors.accent}>Selected Projects</SectionHeading>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                gap: "10px",
-              }}
-            >
-              {resume.projects.map((project) => {
-                const technologies = project.technologies || [];
-                const achievements = project.achievements || [];
-
-                return (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "9px",
+                }}
+              >
+                {publications.map((pub) => (
                   <div
-                    key={project.id}
+                    key={pub.id}
                     style={{
-                      padding: "9px 10px",
-                      borderLeft: `3px solid ${colors.accent}`,
-                      backgroundColor: colors.surface,
+                      breakInside: "avoid",
                     }}
                   >
                     <h3
                       style={{
                         margin: 0,
                         color: colors.text,
-                        fontSize: typography.body,
-                        fontWeight: 800,
-                        lineHeight: 1.35,
+                        fontSize: TYPOGRAPHY.body,
+                        fontWeight: 700,
+                        lineHeight: 1.3,
+                        overflowWrap: "anywhere",
                       }}
                     >
-                      {project.name}
+                      {pub.title}
                     </h3>
 
-                    {project.role && (
-                      <p
-                        style={{
-                          margin: "2px 0 0",
-                          color: colors.accent,
-                          fontSize: typography.small,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {project.role}
-                      </p>
-                    )}
-
-                    <p
-                      style={{
-                        ...bodyTextStyle,
-                        marginTop: "4px",
-                      }}
-                    >
-                      {project.description}
-                    </p>
-
-                    {technologies.length > 0 && (
-                      <p
-                        style={{
-                          margin: "5px 0 0",
-                          color: colors.textSubtle,
-                          fontSize: typography.small,
-                          fontWeight: 600,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {technologies.join(" · ")}
-                      </p>
-                    )}
-
-                    {achievements.length > 0 && (
-                      <BulletList
-                        items={achievements}
-                        textColor={colors.textMuted}
-                        fontSize={typography.small}
-                        lineHeight={1.45}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* ==========================================================
-            CERTIFICATIONS + AWARDS
-            ========================================================== */}
-
-        {(resume.certifications.length > 0 || resume.awards.length > 0) && (
-          <section>
-            <SectionHeading accent={colors.accent}>Certifications & Awards</SectionHeading>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "24px",
-              }}
-            >
-              {resume.certifications.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "7px",
-                  }}
-                >
-                  {resume.certifications.map((certification) => (
-                    <div key={certification.id}>
-                      <h3
-                        style={{
-                          margin: 0,
-                          color: colors.text,
-                          fontSize: typography.body,
-                          fontWeight: 750,
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {certification.name}
-                      </h3>
-
+                    {(cleanText(pub.publisher) || cleanText(pub.date)) && (
                       <p
                         style={{
                           margin: "2px 0 0",
                           color: colors.textMuted,
-                          fontSize: typography.small,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {certification.issuer}
-                        {certification.issueDate ? ` · ${certification.issueDate}` : ""}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {resume.awards.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "7px",
-                  }}
-                >
-                  {resume.awards.map((award) => (
-                    <div key={award.id}>
-                      <h3
-                        style={{
-                          margin: 0,
-                          color: colors.text,
-                          fontSize: typography.body,
-                          fontWeight: 750,
+                          fontSize: TYPOGRAPHY.small,
                           lineHeight: 1.35,
                         }}
                       >
-                        {award.title}
-                      </h3>
+                        {pub.publisher}
+                        {pub.publisher && pub.date ? " · " : ""}
+                        {pub.date}
+                      </p>
+                    )}
 
+                    {cleanText(pub.description) && (
                       <p
                         style={{
-                          margin: "2px 0 0",
-                          color: colors.textMuted,
-                          fontSize: typography.small,
+                          ...bodyTextStyle,
+                          marginTop: "4px",
                         }}
                       >
-                        {award.issuer} · {award.date}
+                        {pub.description}
                       </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
+                    )}
 
-        {/* ==========================================================
-            LANGUAGES + INTERESTS
-            ========================================================== */}
-
-        {(resume.languages.length > 0 || resume.interests.length > 0) && (
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "24px",
-            }}
-          >
-            {resume.languages.length > 0 && (
-              <div>
-                <SectionHeading accent={colors.accent}>Languages</SectionHeading>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "6px 16px",
-                  }}
-                >
-                  {resume.languages.map((language) => (
-                    <div
-                      key={language.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "baseline",
-                        gap: "5px",
-                      }}
-                    >
-                      <span
+                    {cleanText(pub.url) && (
+                      <div
                         style={{
-                          color: colors.text,
-                          fontSize: typography.body,
-                          fontWeight: 700,
+                          marginTop: "5px",
                         }}
                       >
-                        {language.name}
-                      </span>
-
-                      <span
-                        style={{
-                          color: colors.textSubtle,
-                          fontSize: typography.small,
-                        }}
-                      >
-                        {language.proficiency}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {resume.interests.length > 0 && (
-              <div>
-                <SectionHeading accent={colors.accent}>Interests</SectionHeading>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "5px 12px",
-                  }}
-                >
-                  {resume.interests.map((interest) => (
-                    <span
-                      key={interest}
-                      style={{
-                        color: colors.textMuted,
-                        fontSize: typography.small,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* ==========================================================
-            PUBLICATIONS
-            ========================================================== */}
-
-        {resume.publications.length > 0 && (
-          <section>
-            <SectionHeading accent={colors.accent}>Publications</SectionHeading>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "7px",
-              }}
-            >
-              {resume.publications.map((publication) => (
-                <div key={publication.id}>
-                  <h3
-                    style={{
-                      margin: 0,
-                      color: colors.text,
-                      fontSize: typography.body,
-                      fontWeight: 750,
-                    }}
-                  >
-                    {publication.title}
-                  </h3>
-
-                  <p
-                    style={{
-                      margin: "2px 0 0",
-                      color: colors.textMuted,
-                      fontSize: typography.small,
-                    }}
-                  >
-                    {publication.publisher} · {publication.date}
-                  </p>
-
-                  {publication.description && (
-                    <p
-                      style={{
-                        ...bodyTextStyle,
-                        marginTop: "3px",
-                      }}
-                    >
-                      {publication.description}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ==========================================================
-            VOLUNTEER
-            ========================================================== */}
-
-        {resume.volunteer.length > 0 && (
-          <section>
-            <SectionHeading accent={colors.accent}>Volunteer Experience</SectionHeading>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: typography.itemGap,
-              }}
-            >
-              {resume.volunteer.map((volunteer) => (
-                <div key={volunteer.id}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: "14px",
-                    }}
-                  >
-                    <div>
-                      <h3
-                        style={{
-                          margin: 0,
-                          color: colors.text,
-                          fontSize: typography.body,
-                          fontWeight: 750,
-                        }}
-                      >
-                        {volunteer.role}
-                      </h3>
-
-                      <p
-                        style={{
-                          margin: "2px 0 0",
-                          color: colors.accent,
-                          fontSize: typography.small,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {volunteer.organization}
-                      </p>
-                    </div>
-
-                    <DateRange
-                      startDate={volunteer.startDate}
-                      endDate={volunteer.endDate}
-                      current={volunteer.current}
-                      color={colors.textSubtle}
-                      fontSize={typography.small}
-                    />
+                        <LinkText href={pub.url} color={colors.accent} fontSize={TYPOGRAPHY.small}>
+                          {displayUrl(pub.url)}
+                        </LinkText>
+                      </div>
+                    )}
                   </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-                  {volunteer.description && (
-                    <p
-                      style={{
-                        ...bodyTextStyle,
-                        marginTop: "4px",
-                      }}
-                    >
-                      {volunteer.description}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+          {/* ==================================================
+              VOLUNTEER
+              ================================================== */}
 
-        {/* ==========================================================
-            REFERENCES
-            ========================================================== */}
-
-        {resume.references.length > 0 && (
-          <section>
-            <SectionHeading accent={colors.accent}>References</SectionHeading>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                gap: "12px",
-              }}
-            >
-              {resume.references.map((reference) => (
-                <div key={reference.id}>
-                  <h3
-                    style={{
-                      margin: 0,
-                      color: colors.text,
-                      fontSize: typography.body,
-                      fontWeight: 750,
-                    }}
-                  >
-                    {reference.name}
-                  </h3>
-
-                  <p
-                    style={{
-                      margin: "2px 0 0",
-                      color: colors.accent,
-                      fontSize: typography.small,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {reference.position}
-                    {reference.company ? ` · ${reference.company}` : ""}
-                  </p>
-
-                  {(reference.email || reference.phone) && (
-                    <p
-                      style={{
-                        margin: "3px 0 0",
-                        color: colors.textMuted,
-                        fontSize: typography.small,
-                      }}
-                    >
-                      {[reference.email, reference.phone].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ==========================================================
-            CUSTOM SECTIONS
-            ========================================================== */}
-
-        {resume.customSections.length > 0 &&
-          resume.customSections.map((section) => (
-            <section key={section.id}>
-              <SectionHeading accent={colors.accent}>{section.title}</SectionHeading>
-
-              {section.description && (
-                <p
-                  style={{
-                    ...bodyTextStyle,
-                    marginBottom: "7px",
-                  }}
-                >
-                  {section.description}
-                </p>
-              )}
+          {volunteer.length > 0 && (
+            <section>
+              <SectionTitle accent={colors.accent}>Volunteer Experience</SectionTitle>
 
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "7px",
+                  gap: TYPOGRAPHY.itemGap,
                 }}
               >
-                {section.items.map((item) => (
-                  <div key={item.id}>
+                {volunteer.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      breakInside: "avoid",
+                    }}
+                  >
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "baseline",
+                        alignItems: "flex-start",
                         justifyContent: "space-between",
-                        gap: "12px",
+                        gap: "16px",
                       }}
                     >
-                      <h3
+                      <div
                         style={{
-                          margin: 0,
-                          color: colors.text,
-                          fontSize: typography.body,
-                          fontWeight: 750,
+                          minWidth: 0,
+                          flex: 1,
                         }}
                       >
-                        {item.title}
-                      </h3>
-
-                      {item.date && (
-                        <span
+                        <h3
                           style={{
-                            color: colors.textSubtle,
-                            fontSize: typography.small,
-                            whiteSpace: "nowrap",
+                            margin: 0,
+                            color: colors.text,
+                            fontSize: TYPOGRAPHY.body,
+                            fontWeight: 700,
+                            lineHeight: 1.3,
+                            overflowWrap: "anywhere",
                           }}
                         >
-                          {item.date}
-                        </span>
-                      )}
+                          {item.role}
+                        </h3>
+
+                        <p
+                          style={{
+                            margin: "2px 0 0",
+                            color: colors.accent,
+                            fontSize: TYPOGRAPHY.small,
+                            fontWeight: 600,
+                            lineHeight: 1.35,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {item.organization}
+                        </p>
+                      </div>
+
+                      <DateRange
+                        startDate={item.startDate}
+                        endDate={item.endDate}
+                        current={item.current}
+                        color={colors.textSubtle}
+                      />
                     </div>
 
-                    {item.subtitle && (
-                      <p
-                        style={{
-                          margin: "2px 0 0",
-                          color: colors.accent,
-                          fontSize: typography.small,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {item.subtitle}
-                      </p>
-                    )}
-
-                    {item.description && (
+                    {cleanText(item.description) && (
                       <p
                         style={{
                           ...bodyTextStyle,
-                          marginTop: "3px",
+                          marginTop: "5px",
                         }}
                       >
                         {item.description}
@@ -1209,8 +1382,222 @@ export function TemplateSix({ resume, id = "resume-page" }: TemplateFiveProps) {
                 ))}
               </div>
             </section>
-          ))}
-      </main>
+          )}
+
+          {/* ==================================================
+              REFERENCES
+              ================================================== */}
+
+          {references.length > 0 && (
+            <section>
+              <SectionTitle accent={colors.accent}>References</SectionTitle>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    references.length > 1 ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)",
+                  gap: "11px 18px",
+                }}
+              >
+                {references.map((ref) => (
+                  <div
+                    key={ref.id}
+                    style={{
+                      breakInside: "avoid",
+                    }}
+                  >
+                    <h3
+                      style={{
+                        margin: 0,
+                        color: colors.text,
+                        fontSize: TYPOGRAPHY.small,
+                        fontWeight: 700,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {ref.name}
+                    </h3>
+
+                    {(cleanText(ref.position) || cleanText(ref.company)) && (
+                      <p
+                        style={{
+                          margin: "2px 0 0",
+                          color: colors.textMuted,
+                          fontSize: TYPOGRAPHY.small,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {ref.position}
+                        {ref.position && ref.company ? " · " : ""}
+                        {ref.company}
+                      </p>
+                    )}
+
+                    {(cleanText(ref.email) || cleanText(ref.phone)) && (
+                      <p
+                        style={{
+                          margin: "2px 0 0",
+                          color: colors.textSubtle,
+                          fontSize: TYPOGRAPHY.tiny,
+                          lineHeight: 1.4,
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {[ref.email, ref.phone].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ==================================================
+              CUSTOM SECTIONS
+              ================================================== */}
+
+          {customSections.length > 0 &&
+            customSections.map((section) => {
+              const sectionItems = safeArray(section.items);
+
+              if (
+                !cleanText(section.title) &&
+                !cleanText(section.description) &&
+                sectionItems.length === 0
+              ) {
+                return null;
+              }
+
+              return (
+                <section key={section.id}>
+                  {cleanText(section.title) && (
+                    <SectionTitle accent={colors.accent}>{section.title}</SectionTitle>
+                  )}
+
+                  {cleanText(section.description) && (
+                    <p
+                      style={{
+                        ...bodyTextStyle,
+                        marginBottom: sectionItems.length > 0 ? "8px" : 0,
+                      }}
+                    >
+                      {section.description}
+                    </p>
+                  )}
+
+                  {sectionItems.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                      }}
+                    >
+                      {sectionItems.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            breakInside: "avoid",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "baseline",
+                              justifyContent: "space-between",
+                              gap: "14px",
+                            }}
+                          >
+                            <h3
+                              style={{
+                                margin: 0,
+                                color: colors.text,
+                                fontSize: TYPOGRAPHY.body,
+                                fontWeight: 700,
+                                lineHeight: 1.3,
+                                overflowWrap: "anywhere",
+                              }}
+                            >
+                              {item.title}
+                            </h3>
+
+                            {cleanText(item.date) && (
+                              <span
+                                style={{
+                                  color: colors.textSubtle,
+                                  fontSize: TYPOGRAPHY.small,
+                                  whiteSpace: "nowrap",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {item.date}
+                              </span>
+                            )}
+                          </div>
+
+                          {cleanText(item.subtitle) && (
+                            <p
+                              style={{
+                                margin: "2px 0 0",
+                                color: colors.accent,
+                                fontSize: TYPOGRAPHY.small,
+                                fontWeight: 600,
+                                lineHeight: 1.35,
+                                overflowWrap: "anywhere",
+                              }}
+                            >
+                              {item.subtitle}
+                            </p>
+                          )}
+
+                          {cleanText(item.description) && (
+                            <p
+                              style={{
+                                ...bodyTextStyle,
+                                marginTop: "4px",
+                              }}
+                            >
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+        </main>
+      </div>
+
+      {/* ========================================================
+          PRINT
+          ======================================================== */}
+
+      <style jsx global>{`
+        @page {
+          size: A4;
+          margin: 0;
+        }
+
+        @media print {
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+
+          .resume-page {
+            width: 210mm !important;
+            min-width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
     </article>
   );
 }

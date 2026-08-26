@@ -1,59 +1,46 @@
 "use client";
 
 import Image from "next/image";
+
 import type { CSSProperties, ReactNode } from "react";
 
 import { ResumeData } from "@/data/resume";
-import { DEFAULT_RESUME_DESIGN, RESUME_FONT_FAMILIES, RESUME_THEMES } from "@/data/resume-design";
+
+import { DEFAULT_RESUME_DESIGN, RESUME_THEMES } from "@/data/resume-design";
 
 interface TemplateEightProps {
   resume: ResumeData;
   id?: string;
 }
 
-function getTypographyScale(scale: string) {
-  switch (scale) {
-    case "compact":
-      return {
-        name: "26px",
-        jobTitle: "10.5px",
-        body: "9px",
-        small: "7.5px",
-        section: "9.5px",
-        lineHeight: 1.45,
-        sectionGap: "16px",
-        itemGap: "10px",
-      };
+/* ================================================================
+   TEMPLATE EIGHT — HARD-CODED PDF TYPOGRAPHY
+   ================================================================
 
-    case "comfortable":
-      return {
-        name: "32px",
-        jobTitle: "12.5px",
-        body: "10px",
-        small: "8.5px",
-        section: "10.5px",
-        lineHeight: 1.62,
-        sectionGap: "22px",
-        itemGap: "14px",
-      };
+   Font family:
+   - Hard-coded to Arial / Helvetica / sans-serif
+   - No font-family configuration from resume data
 
-    case "standard":
-    default:
-      return {
-        name: "29px",
-        jobTitle: "11.5px",
-        body: "9.5px",
-        small: "8px",
-        section: "10px",
-        lineHeight: 1.55,
-        sectionGap: "19px",
-        itemGap: "12px",
-      };
-  }
-}
+   Typography is intentionally kept readable for A4 PDF output.
+   ================================================================ */
+
+const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+
+const TYPOGRAPHY = {
+  name: "30px",
+  jobTitle: "12px",
+  body: "10px",
+  small: "8.5px",
+  section: "11px",
+  sidebar: "8.5px",
+  sidebarSmall: "8px",
+  lineHeight: 1.5,
+  sectionGap: "20px",
+  itemGap: "14px",
+};
 
 /* ================================================================
-   SHARED HELPERS (scoped to this template)
+   SHARED HELPERS
    ================================================================ */
 
 function SectionHeading({
@@ -82,13 +69,13 @@ function SectionHeading({
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "17px",
-            height: "17px",
+            width: "18px",
+            height: "18px",
             flexShrink: 0,
             borderRadius: "3px",
             backgroundColor: accent,
             color: "#ffffff",
-            fontSize: "7.5px",
+            fontSize: "8px",
             fontWeight: 800,
             lineHeight: 1,
           }}
@@ -101,8 +88,8 @@ function SectionHeading({
         style={{
           margin: 0,
           color: text,
-          fontSize: "11px",
-          fontWeight: 850,
+          fontSize: TYPOGRAPHY.section,
+          fontWeight: 800,
           letterSpacing: "0.1em",
           lineHeight: 1.2,
           textTransform: "uppercase",
@@ -137,8 +124,8 @@ function SideHeading({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "6px",
-        marginBottom: "8px",
+        gap: "7px",
+        marginBottom: "9px",
       }}
     >
       <span
@@ -151,13 +138,14 @@ function SideHeading({
           flexShrink: 0,
         }}
       />
+
       <h2
         style={{
           margin: 0,
           color: text,
-          fontSize: "8.5px",
+          fontSize: "9px",
           fontWeight: 800,
-          letterSpacing: "0.16em",
+          letterSpacing: "0.15em",
           lineHeight: 1.2,
           textTransform: "uppercase",
         }}
@@ -186,12 +174,12 @@ function BulletList({
   return (
     <ul
       style={{
-        margin: "6px 0 0",
+        margin: "7px 0 0",
         padding: 0,
         listStyle: "none",
         display: "flex",
         flexDirection: "column",
-        gap: "3px",
+        gap: "4px",
       }}
     >
       {items.map((item, index) => (
@@ -211,12 +199,13 @@ function BulletList({
             style={{
               width: "3px",
               height: "3px",
-              marginTop: "5px",
+              marginTop: "6px",
               borderRadius: "1px",
               backgroundColor: markerColor,
               flexShrink: 0,
             }}
           />
+
           <span>{item}</span>
         </li>
       ))}
@@ -266,7 +255,7 @@ function SideContactItem({ value, textColor }: { value?: string; textColor: stri
       style={{
         margin: 0,
         color: textColor,
-        fontSize: "7.5px",
+        fontSize: "8px",
         lineHeight: 1.55,
         overflowWrap: "anywhere",
       }}
@@ -302,9 +291,9 @@ function SkillBar({
     <div>
       <p
         style={{
-          margin: "0 0 3px",
+          margin: "0 0 4px",
           color: text,
-          fontSize: "8px",
+          fontSize: "8.5px",
           fontWeight: 650,
           lineHeight: 1.3,
         }}
@@ -343,14 +332,6 @@ function SkillBar({
 export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps) {
   const theme = RESUME_THEMES[resume.themeId] ?? RESUME_THEMES[DEFAULT_RESUME_DESIGN.themeId];
 
-  const font =
-    RESUME_FONT_FAMILIES[resume.fontFamilyId] ??
-    RESUME_FONT_FAMILIES[DEFAULT_RESUME_DESIGN.fontFamilyId];
-
-  const typography = getTypographyScale(
-    resume.typographyScale || DEFAULT_RESUME_DESIGN.typographyScale,
-  );
-
   const colors = theme.colors;
 
   const pageStyle: CSSProperties = {
@@ -359,7 +340,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
     minHeight: "297mm",
     boxSizing: "border-box",
     backgroundColor: "#ffffff",
-    fontFamily: font.family,
+    fontFamily: FONT_FAMILY,
     overflow: "visible",
     color: colors.text,
   };
@@ -367,23 +348,12 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
   const bodyTextStyle: CSSProperties = {
     margin: 0,
     color: colors.textMuted,
-    fontSize: typography.body,
-    lineHeight: typography.lineHeight,
+    fontSize: TYPOGRAPHY.body,
+    lineHeight: TYPOGRAPHY.lineHeight,
   };
 
   const fullName = `${resume.personal.firstName || "Your"} ${resume.personal.lastName || "Name"}`;
 
-  // Keyed by field NAME, not value — two fields (e.g. website &
-  // portfolio) can legitimately hold the same URL, so keying by
-  // value risks a duplicate-key React warning.
-  //
-  // NOTE: no `as const` here — with `as const`, each tuple's first
-  // element becomes a distinct string-literal type, so the array's
-  // type is a union of differently-shaped tuples and a single
-  // `[string, string]` predicate can't be assigned to all of them.
-  // Declaring the array as `Array<[string, string | undefined]>`
-  // widens every entry to the same shape, so the predicate below
-  // type-checks cleanly.
   const contactEntries: Array<[string, string | undefined]> = [
     ["email", resume.personal.email],
     ["phone", resume.personal.phone],
@@ -406,7 +376,6 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
       data-template="classic"
       data-template-id="classic"
       data-theme={resume.themeId}
-      data-font={resume.fontFamilyId}
       data-typography-scale={resume.typographyScale}
     >
       {/* ============================================================
@@ -419,15 +388,15 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           gridTemplateColumns: resume.personal.photo ? "auto 1fr" : "1fr",
           gap: "18px",
           alignItems: "center",
-          padding: "13mm 14mm 15px",
+          padding: "13mm 14mm 16px",
           borderBottom: `3px solid ${colors.accent}`,
         }}
       >
         {resume.personal.photo && (
           <div
             style={{
-              width: "76px",
-              height: "76px",
+              width: "78px",
+              height: "78px",
               flexShrink: 0,
               position: "relative",
               overflow: "hidden",
@@ -439,20 +408,26 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
               src={resume.personal.photo}
               alt={fullName}
               fill
-              sizes="76px"
-              style={{ objectFit: "cover" }}
+              sizes="78px"
+              style={{
+                objectFit: "cover",
+              }}
             />
           </div>
         )}
 
-        <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            minWidth: 0,
+          }}
+        >
           <div
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "6px",
-              marginBottom: "5px",
-              padding: "2px 7px",
+              marginBottom: "6px",
+              padding: "3px 8px",
               borderRadius: "3px",
               backgroundColor: colors.accent,
             }}
@@ -460,7 +435,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
             <span
               style={{
                 color: "#ffffff",
-                fontSize: "7px",
+                fontSize: "7.5px",
                 fontWeight: 800,
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
@@ -475,10 +450,10 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
             style={{
               margin: 0,
               color: colors.text,
-              fontSize: typography.name,
-              fontWeight: 850,
+              fontSize: TYPOGRAPHY.name,
+              fontWeight: 800,
               letterSpacing: "-0.03em",
-              lineHeight: 1.02,
+              lineHeight: 1.05,
               textTransform: "uppercase",
             }}
           >
@@ -488,9 +463,9 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           {resume.personal.jobTitle && (
             <p
               style={{
-                margin: "6px 0 0",
+                margin: "7px 0 0",
                 color: colors.textMuted,
-                fontSize: typography.jobTitle,
+                fontSize: TYPOGRAPHY.jobTitle,
                 fontWeight: 650,
                 letterSpacing: "0.02em",
                 lineHeight: 1.3,
@@ -520,23 +495,25 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           style={{
             backgroundColor: colors.surface,
             borderRight: `1px solid ${colors.border}`,
-            padding: "16px 12px 20px 14mm",
+            padding: "17px 12px 22px 14mm",
             display: "flex",
             flexDirection: "column",
-            gap: typography.sectionGap,
+            gap: TYPOGRAPHY.sectionGap,
           }}
         >
           {/* Contact */}
+
           {contactValues.length > 0 && (
             <div>
               <SideHeading accent={colors.accent} text={colors.text}>
                 Contact
               </SideHeading>
+
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "4px",
+                  gap: "5px",
                 }}
               >
                 {contactValues.map(([field, value]) => (
@@ -547,16 +524,18 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Skills */}
+
           {resume.skills.length > 0 && (
             <div>
               <SideHeading accent={colors.accent} text={colors.text}>
                 Skills
               </SideHeading>
+
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "8px",
+                  gap: "9px",
                 }}
               >
                 {resume.skills.map((skill) => (
@@ -574,16 +553,18 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Education */}
+
           {resume.education.length > 0 && (
             <div>
               <SideHeading accent={colors.accent} text={colors.text}>
                 Education
               </SideHeading>
+
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "9px",
+                  gap: "10px",
                 }}
               >
                 {resume.education.map((education) => (
@@ -592,7 +573,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       style={{
                         margin: 0,
                         color: colors.text,
-                        fontSize: "8px",
+                        fontSize: "8.5px",
                         fontWeight: 750,
                         lineHeight: 1.4,
                       }}
@@ -600,30 +581,33 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       {education.degree}
                       {education.fieldOfStudy ? ` — ${education.fieldOfStudy}` : ""}
                     </p>
+
                     <p
                       style={{
                         margin: "2px 0 0",
                         color: colors.accent,
-                        fontSize: "7.5px",
+                        fontSize: "8px",
                         fontWeight: 700,
                         lineHeight: 1.4,
                       }}
                     >
                       {education.institution}
                     </p>
+
                     <DateRange
                       startDate={education.startDate}
                       endDate={education.endDate}
                       current={education.current}
                       color={colors.textSubtle}
-                      fontSize="7px"
+                      fontSize="7.5px"
                     />
+
                     {(education.grade || education.description) && (
                       <p
                         style={{
-                          margin: "3px 0 0",
+                          margin: "4px 0 0",
                           color: colors.textMuted,
-                          fontSize: "7px",
+                          fontSize: "7.5px",
                           lineHeight: 1.5,
                         }}
                       >
@@ -637,16 +621,18 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Certifications */}
+
           {resume.certifications.length > 0 && (
             <div>
               <SideHeading accent={colors.accent} text={colors.text}>
                 Certifications
               </SideHeading>
+
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "7px",
+                  gap: "8px",
                 }}
               >
                 {resume.certifications.map((certification) => (
@@ -655,18 +641,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       style={{
                         margin: 0,
                         color: colors.text,
-                        fontSize: "8px",
+                        fontSize: "8.5px",
                         fontWeight: 700,
                         lineHeight: 1.4,
                       }}
                     >
                       {certification.name}
                     </p>
+
                     <p
                       style={{
-                        margin: "1px 0 0",
+                        margin: "2px 0 0",
                         color: colors.textMuted,
-                        fontSize: "7px",
+                        fontSize: "7.5px",
                         lineHeight: 1.4,
                       }}
                     >
@@ -680,16 +667,18 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Languages */}
+
           {resume.languages.length > 0 && (
             <div>
               <SideHeading accent={colors.accent} text={colors.text}>
                 Languages
               </SideHeading>
+
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "5px",
+                  gap: "6px",
                 }}
               >
                 {resume.languages.map((language) => (
@@ -704,16 +693,17 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                     <span
                       style={{
                         color: colors.text,
-                        fontSize: "8px",
+                        fontSize: "8.5px",
                         fontWeight: 650,
                       }}
                     >
                       {language.name}
                     </span>
+
                     <span
                       style={{
                         color: colors.textSubtle,
-                        fontSize: "7px",
+                        fontSize: "7.5px",
                         textTransform: "capitalize",
                       }}
                     >
@@ -726,27 +716,29 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Interests */}
+
           {resume.interests.length > 0 && (
             <div>
               <SideHeading accent={colors.accent} text={colors.text}>
                 Interests
               </SideHeading>
+
               <div
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
-                  gap: "4px",
+                  gap: "5px",
                 }}
               >
                 {resume.interests.map((interest, index) => (
                   <span
                     key={`${interest}-${index}`}
                     style={{
-                      padding: "3px 6px",
+                      padding: "3px 7px",
                       borderRadius: "3px",
                       border: `1px solid ${colors.border}`,
                       color: colors.textMuted,
-                      fontSize: "7px",
+                      fontSize: "7.5px",
                       fontWeight: 600,
                       lineHeight: 1.4,
                     }}
@@ -765,23 +757,26 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
 
         <main
           style={{
-            padding: "16px 14mm 20px 16px",
+            padding: "17px 14mm 22px 17px",
             display: "flex",
             flexDirection: "column",
-            gap: typography.sectionGap,
+            gap: TYPOGRAPHY.sectionGap,
           }}
         >
           {/* Profile */}
+
           {resume.summary.trim() && (
             <section>
               <SectionHeading index="01" accent={colors.accent} text={colors.text}>
                 Profile
               </SectionHeading>
+
               <p style={bodyTextStyle}>{resume.summary}</p>
             </section>
           )}
 
           {/* Experience */}
+
           {resume.experience.length > 0 && (
             <section>
               <SectionHeading index="02" accent={colors.accent} text={colors.text}>
@@ -792,7 +787,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: typography.itemGap,
+                  gap: TYPOGRAPHY.itemGap,
                 }}
               >
                 {resume.experience.map((experience) => (
@@ -800,7 +795,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                     key={experience.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "12px 1fr",
+                      gridTemplateColumns: "13px 1fr",
                       gap: "10px",
                     }}
                   >
@@ -816,18 +811,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                         style={{
                           width: "6px",
                           height: "6px",
-                          marginTop: "4px",
+                          marginTop: "5px",
                           borderRadius: "1px",
                           backgroundColor: colors.accent,
                           position: "relative",
                           zIndex: 1,
                         }}
                       />
+
                       <div
                         style={{
                           position: "absolute",
-                          top: "10px",
-                          bottom: "-14px",
+                          top: "11px",
+                          bottom: "-15px",
                           width: "1px",
                           backgroundColor: colors.accentLight,
                         }}
@@ -843,23 +839,28 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                           gap: "14px",
                         }}
                       >
-                        <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            minWidth: 0,
+                          }}
+                        >
                           <h3
                             style={{
                               margin: 0,
                               color: colors.text,
-                              fontSize: typography.body,
+                              fontSize: TYPOGRAPHY.body,
                               fontWeight: 800,
                               lineHeight: 1.35,
                             }}
                           >
                             {experience.position}
                           </h3>
+
                           <p
                             style={{
-                              margin: "2px 0 0",
+                              margin: "3px 0 0",
                               color: colors.accent,
-                              fontSize: typography.small,
+                              fontSize: TYPOGRAPHY.small,
                               fontWeight: 700,
                               lineHeight: 1.35,
                             }}
@@ -875,12 +876,17 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                           endDate={experience.endDate}
                           current={experience.current}
                           color={colors.textSubtle}
-                          fontSize={typography.small}
+                          fontSize={TYPOGRAPHY.small}
                         />
                       </div>
 
                       {experience.description && (
-                        <p style={{ ...bodyTextStyle, marginTop: "5px" }}>
+                        <p
+                          style={{
+                            ...bodyTextStyle,
+                            marginTop: "6px",
+                          }}
+                        >
                           {experience.description}
                         </p>
                       )}
@@ -889,8 +895,8 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                         items={experience.achievements || []}
                         textColor={colors.textMuted}
                         markerColor={colors.accent}
-                        fontSize={typography.body}
-                        lineHeight={typography.lineHeight}
+                        fontSize={TYPOGRAPHY.body}
+                        lineHeight={TYPOGRAPHY.lineHeight}
                       />
                     </div>
                   </div>
@@ -900,6 +906,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Projects */}
+
           {resume.projects.length > 0 && (
             <section>
               <SectionHeading index="03" accent={colors.accent} text={colors.text}>
@@ -910,14 +917,14 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "10px",
+                  gap: "11px",
                 }}
               >
                 {resume.projects.map((project) => (
                   <div
                     key={project.id}
                     style={{
-                      padding: "9px 11px",
+                      padding: "10px 12px",
                       borderRadius: "5px",
                       border: `1px solid ${colors.border}`,
                     }}
@@ -934,27 +941,28 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                         style={{
                           margin: 0,
                           color: colors.text,
-                          fontSize: typography.body,
+                          fontSize: TYPOGRAPHY.body,
                           fontWeight: 800,
                           lineHeight: 1.35,
                         }}
                       >
                         {project.name}
                       </h3>
+
                       <DateRange
                         startDate={project.startDate}
                         endDate={project.endDate}
                         color={colors.textSubtle}
-                        fontSize={typography.small}
+                        fontSize={TYPOGRAPHY.small}
                       />
                     </div>
 
                     {project.role && (
                       <p
                         style={{
-                          margin: "2px 0 0",
+                          margin: "3px 0 0",
                           color: colors.accent,
-                          fontSize: typography.small,
+                          fontSize: TYPOGRAPHY.small,
                           fontWeight: 700,
                         }}
                       >
@@ -962,26 +970,33 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       </p>
                     )}
 
-                    <p style={{ ...bodyTextStyle, marginTop: "4px" }}>{project.description}</p>
+                    <p
+                      style={{
+                        ...bodyTextStyle,
+                        marginTop: "5px",
+                      }}
+                    >
+                      {project.description}
+                    </p>
 
                     {(project.technologies?.length ?? 0) > 0 && (
                       <div
                         style={{
                           display: "flex",
                           flexWrap: "wrap",
-                          gap: "4px",
-                          marginTop: "6px",
+                          gap: "5px",
+                          marginTop: "7px",
                         }}
                       >
                         {project.technologies!.map((tech, techIndex) => (
                           <span
                             key={`${project.id}-tech-${techIndex}`}
                             style={{
-                              padding: "2px 6px",
+                              padding: "3px 7px",
                               borderRadius: "3px",
                               backgroundColor: colors.surface,
                               color: colors.textSubtle,
-                              fontSize: "7px",
+                              fontSize: "7.5px",
                               fontWeight: 650,
                             }}
                           >
@@ -995,7 +1010,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       items={project.achievements || []}
                       textColor={colors.textMuted}
                       markerColor={colors.accent}
-                      fontSize={typography.small}
+                      fontSize={TYPOGRAPHY.small}
                       lineHeight={1.5}
                     />
                   </div>
@@ -1005,6 +1020,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Awards + Publications */}
+
           {(resume.awards.length > 0 || resume.publications.length > 0) && (
             <section
               style={{
@@ -1014,16 +1030,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 gap: "20px",
               }}
             >
+              {/* Awards */}
+
               {resume.awards.length > 0 && (
                 <div>
                   <SectionHeading index="04" accent={colors.accent} text={colors.text}>
                     Awards
                   </SectionHeading>
+
                   <div
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "7px",
+                      gap: "8px",
                     }}
                   >
                     {resume.awards.map((award) => (
@@ -1032,24 +1051,33 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                           style={{
                             margin: 0,
                             color: colors.text,
-                            fontSize: typography.body,
+                            fontSize: TYPOGRAPHY.body,
                             fontWeight: 750,
                             lineHeight: 1.35,
                           }}
                         >
                           {award.title}
                         </h3>
+
                         <p
                           style={{
-                            margin: "2px 0 0",
+                            margin: "3px 0 0",
                             color: colors.textMuted,
-                            fontSize: typography.small,
+                            fontSize: TYPOGRAPHY.small,
                           }}
                         >
                           {award.issuer} · {award.date}
                         </p>
+
                         {award.description && (
-                          <p style={{ ...bodyTextStyle, marginTop: "2px" }}>{award.description}</p>
+                          <p
+                            style={{
+                              ...bodyTextStyle,
+                              marginTop: "3px",
+                            }}
+                          >
+                            {award.description}
+                          </p>
                         )}
                       </div>
                     ))}
@@ -1057,16 +1085,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 </div>
               )}
 
+              {/* Publications */}
+
               {resume.publications.length > 0 && (
                 <div>
                   <SectionHeading index="05" accent={colors.accent} text={colors.text}>
                     Publications
                   </SectionHeading>
+
                   <div
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "7px",
+                      gap: "8px",
                     }}
                   >
                     {resume.publications.map((publication) => (
@@ -1075,24 +1106,31 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                           style={{
                             margin: 0,
                             color: colors.text,
-                            fontSize: typography.body,
+                            fontSize: TYPOGRAPHY.body,
                             fontWeight: 750,
                             lineHeight: 1.35,
                           }}
                         >
                           {publication.title}
                         </h3>
+
                         <p
                           style={{
-                            margin: "2px 0 0",
+                            margin: "3px 0 0",
                             color: colors.textMuted,
-                            fontSize: typography.small,
+                            fontSize: TYPOGRAPHY.small,
                           }}
                         >
                           {publication.publisher} · {publication.date}
                         </p>
+
                         {publication.description && (
-                          <p style={{ ...bodyTextStyle, marginTop: "2px" }}>
+                          <p
+                            style={{
+                              ...bodyTextStyle,
+                              marginTop: "3px",
+                            }}
+                          >
                             {publication.description}
                           </p>
                         )}
@@ -1105,6 +1143,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Volunteer */}
+
           {resume.volunteer.length > 0 && (
             <section>
               <SectionHeading index="06" accent={colors.accent} text={colors.text}>
@@ -1115,7 +1154,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: typography.itemGap,
+                  gap: TYPOGRAPHY.itemGap,
                 }}
               >
                 {resume.volunteer.map((volunteer) => (
@@ -1133,17 +1172,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                           style={{
                             margin: 0,
                             color: colors.text,
-                            fontSize: typography.body,
+                            fontSize: TYPOGRAPHY.body,
                             fontWeight: 750,
+                            lineHeight: 1.35,
                           }}
                         >
                           {volunteer.role}
                         </h3>
+
                         <p
                           style={{
-                            margin: "2px 0 0",
+                            margin: "3px 0 0",
                             color: colors.accent,
-                            fontSize: typography.small,
+                            fontSize: TYPOGRAPHY.small,
                             fontWeight: 700,
                           }}
                         >
@@ -1156,12 +1197,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                         endDate={volunteer.endDate}
                         current={volunteer.current}
                         color={colors.textSubtle}
-                        fontSize={typography.small}
+                        fontSize={TYPOGRAPHY.small}
                       />
                     </div>
 
                     {volunteer.description && (
-                      <p style={{ ...bodyTextStyle, marginTop: "4px" }}>{volunteer.description}</p>
+                      <p
+                        style={{
+                          ...bodyTextStyle,
+                          marginTop: "5px",
+                        }}
+                      >
+                        {volunteer.description}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -1170,6 +1218,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* References */}
+
           {resume.references.length > 0 && (
             <section>
               <SectionHeading index="07" accent={colors.accent} text={colors.text}>
@@ -1180,7 +1229,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: "12px",
+                  gap: "14px",
                 }}
               >
                 {resume.references.map((reference) => (
@@ -1189,29 +1238,32 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       style={{
                         margin: 0,
                         color: colors.text,
-                        fontSize: typography.body,
+                        fontSize: TYPOGRAPHY.body,
                         fontWeight: 750,
+                        lineHeight: 1.35,
                       }}
                     >
                       {reference.name}
                     </h3>
+
                     <p
                       style={{
-                        margin: "2px 0 0",
+                        margin: "3px 0 0",
                         color: colors.accent,
-                        fontSize: typography.small,
+                        fontSize: TYPOGRAPHY.small,
                         fontWeight: 700,
                       }}
                     >
                       {reference.position}
                       {reference.company ? ` · ${reference.company}` : ""}
                     </p>
+
                     {(reference.email || reference.phone) && (
                       <p
                         style={{
-                          margin: "3px 0 0",
+                          margin: "4px 0 0",
                           color: colors.textMuted,
-                          fontSize: typography.small,
+                          fontSize: TYPOGRAPHY.small,
                         }}
                       >
                         {[reference.email, reference.phone].filter(Boolean).join(" · ")}
@@ -1224,6 +1276,7 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
           )}
 
           {/* Custom Sections */}
+
           {resume.customSections.length > 0 &&
             resume.customSections.map((section, sIndex) => (
               <section key={section.id}>
@@ -1236,14 +1289,21 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                 </SectionHeading>
 
                 {section.description && (
-                  <p style={{ ...bodyTextStyle, marginBottom: "7px" }}>{section.description}</p>
+                  <p
+                    style={{
+                      ...bodyTextStyle,
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {section.description}
+                  </p>
                 )}
 
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "7px",
+                    gap: "8px",
                   }}
                 >
                   {section.items.map((item) => (
@@ -1260,17 +1320,19 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                           style={{
                             margin: 0,
                             color: colors.text,
-                            fontSize: typography.body,
+                            fontSize: TYPOGRAPHY.body,
                             fontWeight: 750,
+                            lineHeight: 1.35,
                           }}
                         >
                           {item.title}
                         </h3>
+
                         {item.date && (
                           <span
                             style={{
                               color: colors.textSubtle,
-                              fontSize: typography.small,
+                              fontSize: TYPOGRAPHY.small,
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -1282,9 +1344,9 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       {item.subtitle && (
                         <p
                           style={{
-                            margin: "2px 0 0",
+                            margin: "3px 0 0",
                             color: colors.accent,
-                            fontSize: typography.small,
+                            fontSize: TYPOGRAPHY.small,
                             fontWeight: 700,
                           }}
                         >
@@ -1293,7 +1355,14 @@ export function TemplateEight({ resume, id = "resume-page" }: TemplateEightProps
                       )}
 
                       {item.description && (
-                        <p style={{ ...bodyTextStyle, marginTop: "3px" }}>{item.description}</p>
+                        <p
+                          style={{
+                            ...bodyTextStyle,
+                            marginTop: "4px",
+                          }}
+                        >
+                          {item.description}
+                        </p>
                       )}
                     </div>
                   ))}
