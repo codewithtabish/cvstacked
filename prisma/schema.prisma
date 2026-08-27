@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -8,68 +7,232 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum ResumePurchaseProduct {
+  RESUME
+  AI_OPTIMIZER
+}
+
+enum ResumePurchaseStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum ResumeAIOptimizerStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================
+// USER
+// ============================================================
+
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  fullName  String?
+  id       String  @id @default(cuid())
+  clerkId  String  @unique
+  fullName String?
 
-  resumes   Resume[]
-  uploads   ResumeUpload[]
-
-  subscription Subscription?
+  resumes            Resume[]
+  resumeAIOptimizers ResumeAIOptimizer[]
+  purchases          ResumePurchase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Resume {
-  id               String   @id @default(cuid())
+// ============================================================
+// NORMAL RESUME
+//
+// Created directly inside the CVStacked resume builder.
+//
+// Price: $3 one-time
+// ============================================================
 
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Resume {
+  id     String @id @default(cuid())
+  userId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name             String
   description      String?
-
   resumeTemplateId String
   content          Json
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  purchases ResumePurchase[] @relation("ResumePurchases")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([resumeTemplateId])
 }
 
-model ResumeUpload {
-  id               String   @id @default(cuid())
+// ============================================================
+// AI RESUME OPTIMIZER
+//
+// User uploads an existing resume and can provide:
+// - Job URL
+// - Custom instructions/prompt
+//
+// CVStacked extracts the job information and uses AI
+// to optimize/tailor the resume.
+//
+// Price: $4 one-time
+// ============================================================
 
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  name             String
-
-  fileUrl          String?
-  fileType         String?
-  fileSize         Int?
-
-  content          Json
-  processingPrompt String
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model Subscription {
+model ResumeAIOptimizer {
   id     String @id @default(cuid())
+  userId String
 
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  planId String @default("free")
+  name     String
+  fileUrl  String?
+  fileType String?
+  fileSize Int?
+
+  sourceContent Json
+
+  processingPrompt String?
+  jobUrl           String?
+  jobData          Json?
+
+  optimizedContent Json?
+
+  processingStatus ResumeAIOptimizerStatus @default(PENDING)
+
+  purchases ResumePurchase[] @relation("AIOptimizerPurchases")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([processingStatus])
+}
+
+// ============================================================
+// ONE-TIME PURCHASE
+//
+// Normal Resume:
+//   $3 USD
+//
+// AI Resume Optimizer:
+//   $4 USD
+//
+// No subscriptions.
+// ============================================================
+
+model ResumePurchase {
+  id String @id @default(cuid())
+
+  // ----------------------------------------------------------
+  // User
+  // ----------------------------------------------------------
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ----------------------------------------------------------
+  // Normal Resume
+  // ----------------------------------------------------------
+
+  resumeId String?
+  resume   Resume? @relation("ResumePurchases", fields: [resumeId], references: [id], onDelete: Cascade)
+
+  // ----------------------------------------------------------
+  // AI Resume Optimizer
+  // ----------------------------------------------------------
+
+  resumeAIOptimizerId String?
+  resumeAIOptimizer   ResumeAIOptimizer? @relation("AIOptimizerPurchases", fields: [resumeAIOptimizerId], references: [id], onDelete: Cascade)
+
+  // ----------------------------------------------------------
+  // Product
+  // ----------------------------------------------------------
+
+  productType ResumePurchaseProduct
+
+  // ----------------------------------------------------------
+  // Payment provider
+  // ----------------------------------------------------------
+
+  provider String @default("safepay")
+
+  tracker String @unique
+
+  paymentId String?
+
+  // ----------------------------------------------------------
+  // Payment amount
+  //
+  // Resume:
+  // $3.00 = 300
+  //
+  // AI Optimizer:
+  // $4.00 = 400
+  //
+  // Stored in cents.
+  // ----------------------------------------------------------
+
+  amount   Int
+  currency String @default("USD")
+
+  // ----------------------------------------------------------
+  // Payment status
+  // ----------------------------------------------------------
+
+  status ResumePurchaseStatus @default(PENDING)
+  paidAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([resumeId])
+  @@index([resumeAIOptimizerId])
+  @@index([productType])
+  @@index([status])
+  @@index([paymentId])
+}
+
+// ============================================================
+// PAYMENT EVENTS
+//
+// Stores Safepay webhook events.
+//
+// Used for:
+// - webhook auditing
+// - debugging
+// - idempotency
+// - payment history
+// ============================================================
+
+model PaymentEvent {
+  id String @id @default(cuid())
+
+  provider String @default("safepay")
+
+  eventId String?
+
+  eventType String?
+
+  tracker String?
+
+  payload Json
+
+  createdAt DateTime @default(now())
+
+  @@index([provider])
+  @@index([eventId])
+  @@index([eventType])
+  @@index([tracker])
 }

@@ -23,7 +23,8 @@ export default function AppPage() {
               </h1>
 
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-                Create, edit, customize, and export professional resumes from one focused workspace.
+                Create, edits, customize, and export professional resumes from one focused
+                workspace.
               </p>
             </div>
 
