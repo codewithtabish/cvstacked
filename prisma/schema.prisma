@@ -57,10 +57,10 @@ model User {
 // ============================================================
 
 model Resume {
-  id     String @id @default(cuid())
-  userId String
+  id String @id @default(cuid())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name             String
   description      String?
@@ -72,6 +72,9 @@ model Resume {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // A user can have many resumes,
+  // but cannot have the same template twice.
+  @@unique([userId, resumeTemplateId])
   @@index([userId])
   @@index([resumeTemplateId])
 }

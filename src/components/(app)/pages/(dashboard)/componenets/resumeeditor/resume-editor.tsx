@@ -20,13 +20,13 @@ import {
   User,
   Wrench,
 } from "lucide-react";
-
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { loadDraft, saveDraft } from "@/lib/resume-draft";
 import type { ResumeData } from "@/types/resume";
 
@@ -39,34 +39,58 @@ import ExperienceSectionEditor, {
 } from "./experience-section-editor";
 import InterestsEditorSection from "./interests-editor-section";
 import LanguagesSectionEditor from "./language-section-editor";
+
 import {
   PersonalSectionEditor,
   type PersonalValidationErrors,
   validatePersonalInfo,
 } from "./personalsectioneditor";
+
 import {
   ProjectSectionEditor,
   type ProjectSectionValidationErrors,
   validateProjects,
 } from "./project-section-editor";
+
 import ResumePublicationEditor from "./publication-editor-section";
 import ReferencesEditor from "./references-editor";
 import ResumeAwardEditor from "./resume-award-editor";
 import { ResumePreview } from "./resume-previewer";
+
 import SkillsSectionEditor, {
   type SkillsValidationErrors,
   validateSkills,
 } from "./skills-section-editor";
+
 import { SummarySectionEditor } from "./summarysectioneditor";
 import { VolunteerEditorSection } from "./volunteer-editor-section";
 
 /* ============================================================
-   PROPS
+   TYPES
    ============================================================ */
 
-interface ResumeEditorProps {
+type ResumeTemplatePlan = "free" | "premium";
+
+export interface ResumeEditorProps {
   initialResume?: ResumeData;
+
+  /**
+   * Stable template ID.
+   *
+   * This is also the value that will eventually be stored
+   * in Resume.resumeTemplateId.
+   */
   templateId: string;
+
+  /**
+   * Template metadata.
+   *
+   * These values come directly from RESUME_TEMPLATES.
+   */
+  templateName: string;
+  templateDescription: string;
+  templateCategory: string;
+  templatePlan: ResumeTemplatePlan;
 }
 
 /* ============================================================
@@ -194,11 +218,17 @@ const SECTIONS: ResumeSection[] = [
 function createEmptyResume(templateId: string): ResumeData {
   return {
     id: crypto.randomUUID(),
+
     title: "Untitled Resume",
+
     templateId,
+
     themeId: "blue",
+
     fontFamilyId: "inter",
+
     typographyScale: "comfortable",
+
     personal: {
       firstName: "",
       lastName: "",
@@ -213,18 +243,31 @@ function createEmptyResume(templateId: string): ResumeData {
       github: "",
       portfolio: "",
     },
+
     summary: "",
+
     experience: [],
+
     education: [],
+
     skills: [],
+
     projects: [],
+
     certifications: [],
+
     languages: [],
+
     awards: [],
+
     publications: [],
+
     volunteer: [],
+
     references: [],
+
     interests: [],
+
     customSections: [],
   };
 }
@@ -260,11 +303,23 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
 
   return {
     ...resume,
+
     id: resume.id ?? crypto.randomUUID(),
+
     title: resume.title ?? "Untitled Resume",
+
+    /**
+     * Always force the current template.
+     *
+     * This prevents a draft from accidentally switching
+     * the selected template.
+     */
     templateId,
+
     themeId: resume.themeId ?? "blue",
+
     fontFamilyId: resume.fontFamilyId ?? "inter",
+
     typographyScale: resume.typographyScale ?? "comfortable",
 
     personal: {
@@ -283,10 +338,15 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
     },
 
     summary: resume.summary ?? "",
+
     experience: resume.experience ?? [],
+
     education: resume.education ?? [],
+
     skills: resume.skills ?? [],
+
     projects: resume.projects ?? [],
+
     certifications: resume.certifications ?? [],
 
     languages: (resume.languages ?? []).map((language) => {
@@ -301,8 +361,11 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
     }),
 
     awards: resume.awards ?? [],
+
     publications: resume.publications ?? [],
+
     volunteer: resume.volunteer ?? [],
+
     references: resume.references ?? [],
 
     interests: Array.isArray(resume.interests)
@@ -320,14 +383,23 @@ function normalizeResume(resume: ResumeData, templateId: string): ResumeData {
 function getInitialResume(templateId: string, initialResume?: ResumeData): ResumeData {
   const draft = loadDraft(templateId);
 
+  /**
+   * Existing local draft has priority.
+   */
   if (draft?.resume) {
     return normalizeResume(draft.resume, templateId);
   }
 
+  /**
+   * Otherwise use the server-provided initial resume.
+   */
   if (initialResume) {
     return normalizeResume(initialResume, templateId);
   }
 
+  /**
+   * Final fallback.
+   */
   return createEmptyResume(templateId);
 }
 
@@ -382,7 +454,14 @@ function isPersonalComplete(resume: ResumeData): boolean {
    MAIN EDITOR
    ============================================================ */
 
-export function ResumeEditor({ initialResume, templateId }: ResumeEditorProps) {
+export function ResumeEditor({
+  initialResume,
+  templateId,
+  templateName,
+  templateDescription,
+  templateCategory,
+  templatePlan,
+}: ResumeEditorProps) {
   const isClient = useIsClient();
 
   if (!isClient) {
@@ -393,14 +472,30 @@ export function ResumeEditor({ initialResume, templateId }: ResumeEditorProps) {
     );
   }
 
-  return <ResumeEditorClient initialResume={initialResume} templateId={templateId} />;
+  return (
+    <ResumeEditorClient
+      initialResume={initialResume}
+      templateId={templateId}
+      templateName={templateName}
+      templateDescription={templateDescription}
+      templateCategory={templateCategory}
+      templatePlan={templatePlan}
+    />
+  );
 }
 
 /* ============================================================
    CLIENT EDITOR
    ============================================================ */
 
-function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
+function ResumeEditorClient({
+  initialResume,
+  templateId,
+  templateName,
+  templateDescription,
+  templateCategory,
+  templatePlan,
+}: ResumeEditorProps) {
   const [resume, setResume] = useState<ResumeData>(() =>
     getInitialResume(templateId, initialResume),
   );
@@ -429,19 +524,26 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
   const [projectValidationStarted, setProjectValidationStarted] = useState(false);
 
-  const [editorDraft, setEditorDraft] = useState<ResumeData>(() =>
-    getInitialResume(templateId, initialResume),
-  );
+  /**
+   * This is the data shown inside all editor sections.
+   *
+   * `resume` remains the canonical resume state.
+   */
+  const editorDraft = resume;
 
-  const emptyResume = useMemo(() => createEmptyResume(templateId), [templateId]);
+  const emptyResume = createEmptyResume(templateId);
 
   /* ==========================================================
-     SAVE DRAFT
+     SAVE LOCAL DRAFT
      ========================================================== */
 
   useEffect(() => {
     saveDraft(templateId, resume, activeSectionIndex);
   }, [templateId, resume, activeSectionIndex]);
+
+  /* ==========================================================
+     ACTIVE SECTION
+     ========================================================== */
 
   const activeSection = SECTIONS[activeSectionIndex] ?? SECTIONS[0];
 
@@ -450,6 +552,10 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
   const isFirst = activeSectionIndex === 0;
 
   const isLast = activeSectionIndex === SECTIONS.length - 1;
+
+  /* ==========================================================
+     VALIDATION STATUS
+     ========================================================== */
 
   const personalComplete = isPersonalComplete(resume);
 
@@ -468,15 +574,24 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
   const onChange = (next: ResumeData) => {
     const normalizedNext = normalizeResume(next, templateId);
 
-    setEditorDraft(normalizedNext);
-
     setResume((currentResume) => {
       const updatedResume: ResumeData = {
         ...currentResume,
+
+        /**
+         * These properties are global resume properties
+         * and therefore always update.
+         */
+        id: currentResume.id ?? normalizedNext.id,
+
         title: normalizedNext.title,
+
         themeId: normalizedNext.themeId,
+
         fontFamilyId: normalizedNext.fontFamilyId,
+
         typographyScale: normalizedNext.typographyScale,
+
         templateId,
       };
 
@@ -618,22 +733,26 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
   };
 
   /* ==========================================================
-     RESET VALIDATION UI
+     RESET VALIDATION
      ========================================================== */
 
   const resetValidation = () => {
     setPersonalValidationStarted(false);
+
     setPersonalErrors({});
 
     setExperienceValidationStarted(false);
+
     setExperienceErrors({});
 
     setEducationValidationStarted(false);
 
     setSkillsValidationStarted(false);
+
     setSkillsErrors({});
 
     setProjectValidationStarted(false);
+
     setProjectErrors({});
   };
 
@@ -652,8 +771,8 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     }
 
     setActiveSectionIndex(index);
+
     resetValidation();
-    setEditorDraft(resume);
   };
 
   /* ==========================================================
@@ -685,7 +804,6 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
     setActiveSectionIndex(activeSectionIndex - 1);
 
     resetValidation();
-    setEditorDraft(resume);
   };
 
   /* ==========================================================
@@ -782,7 +900,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      {/* HEADER */}
+      {/* ======================================================
+          HEADER
+          ====================================================== */}
 
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 sm:px-5 lg:px-7">
         <div className="flex min-w-0 items-center gap-3">
@@ -790,9 +910,17 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
 
           <Separator orientation="vertical" className="h-5" />
 
-          <span className="truncate text-sm text-muted-foreground">
-            {resume.title || "Untitled Resume"}
-          </span>
+          <div className="min-w-0">
+            <span className="block truncate text-sm text-muted-foreground">
+              {resume.title || "Untitled Resume"}
+            </span>
+
+            <span className="hidden truncate text-[10px] text-muted-foreground/60 sm:block">
+              {templateName}
+              {" · "}
+              {templateCategory}
+            </span>
+          </div>
         </div>
 
         <Tabs value={view} onValueChange={(value) => setView(value as "editor" | "preview")}>
@@ -829,18 +957,24 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
         </div>
       </header>
 
-      {/* MAIN TABS */}
+      {/* ======================================================
+          MAIN TABS
+          ====================================================== */}
 
       <Tabs
         value={view}
         onValueChange={(value) => setView(value as "editor" | "preview")}
         className="min-h-0 flex-1"
       >
-        {/* EDITOR */}
+        {/* ====================================================
+            EDITOR
+            ==================================================== */}
 
         <TabsContent value="editor" className="mt-0 h-full min-h-0 data-[state=inactive]:hidden">
           <div className="flex h-full min-h-0 flex-col">
-            {/* MOBILE NAVIGATION */}
+            {/* ==================================================
+                MOBILE NAVIGATION
+                ================================================== */}
 
             <div className="shrink-0 border-b border-border bg-background lg:hidden">
               <div className="px-3 py-3 sm:px-5">
@@ -877,11 +1011,13 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                             className={[
                               "min-w-[110px] flex-1 rounded-lg border px-2.5 py-2 text-left",
                               "transition-all duration-200",
+
                               isActive
                                 ? "border-primary/30 bg-primary/5"
                                 : isCompleted
                                   ? "border-border bg-muted/30"
                                   : "border-border bg-muted/10",
+
                               isLocked
                                 ? "cursor-not-allowed opacity-45"
                                 : "cursor-pointer hover:bg-muted/40",
@@ -891,6 +1027,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                               <span
                                 className={[
                                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
+
                                   isActive
                                     ? "border-primary bg-primary text-primary-foreground"
                                     : isCompleted
@@ -943,7 +1080,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
               </div>
             </div>
 
-            {/* DESKTOP EDITOR */}
+            {/* ==================================================
+                DESKTOP EDITOR
+                ================================================== */}
 
             <div className="hidden min-h-0 flex-1 lg:flex">
               <aside className="w-[270px] shrink-0 border-r border-border bg-muted/20">
@@ -977,11 +1116,13 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                               className={[
                                 "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left",
                                 "transition-all duration-150",
+
                                 isActive
                                   ? "bg-primary/8 text-foreground ring-1 ring-primary/15"
                                   : isCompleted
                                     ? "text-foreground hover:bg-muted"
                                     : "text-muted-foreground hover:bg-muted/60",
+
                                 isLocked
                                   ? "cursor-not-allowed opacity-45 hover:bg-transparent"
                                   : "cursor-pointer",
@@ -990,6 +1131,7 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
                               <span
                                 className={[
                                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+
                                   isActive
                                     ? "border-primary/25 bg-primary text-primary-foreground"
                                     : isCompleted
@@ -1079,7 +1221,9 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
               </ScrollArea>
             </div>
 
-            {/* MOBILE EDITOR */}
+            {/* ==================================================
+                MOBILE EDITOR
+                ================================================== */}
 
             <ScrollArea className="min-h-0 flex-1 lg:hidden">
               <div className="w-full px-4 py-6 sm:px-6 sm:py-8">
@@ -1114,14 +1258,24 @@ function ResumeEditorClient({ initialResume, templateId }: ResumeEditorProps) {
           </div>
         </TabsContent>
 
-        {/* PREVIEW */}
+        {/* ====================================================
+            PREVIEW
+            ==================================================== */}
 
         <TabsContent
           value="preview"
           className="mt-0 h-full min-h-0 overflow-hidden data-[state=inactive]:hidden"
         >
           <div className="h-full w-full overflow-hidden bg-muted/40">
-            <ResumePreview resume={resume} id={templateId} onChange={onChange} />
+            <ResumePreview
+              resume={resume}
+              id={templateId}
+              onChange={onChange}
+              templateName={templateName}
+              templateDescription={templateDescription}
+              templateCategory={templateCategory}
+              templatePlan={templatePlan}
+            />
           </div>
         </TabsContent>
       </Tabs>
@@ -1138,18 +1292,23 @@ interface SectionContentProps {
   ActiveIcon: typeof User;
   resume: ResumeData;
   emptyResume: ResumeData;
+
   onChange: (next: ResumeData) => void;
 
   personalErrors: PersonalValidationErrors;
+
   onPersonalValidate: (errors: PersonalValidationErrors) => void;
 
   experienceErrors: ExperienceValidationErrors;
+
   onExperienceValidate: (errors: ExperienceValidationErrors) => void;
 
   skillsErrors: SkillsValidationErrors;
+
   onSkillsValidate: (errors: SkillsValidationErrors) => void;
 
   projectErrors: ProjectSectionValidationErrors;
+
   onProjectValidate: (errors: ProjectSectionValidationErrors) => void;
 }
 
@@ -1170,7 +1329,9 @@ function SectionContent({
 }: SectionContentProps) {
   return (
     <div>
-      {/* SECTION HEADING */}
+      {/* ======================================================
+          SECTION HEADING
+          ====================================================== */}
 
       <div className="mb-7">
         <div className="flex items-center gap-3">
@@ -1188,7 +1349,9 @@ function SectionContent({
         </div>
       </div>
 
-      {/* EDITOR CARD */}
+      {/* ======================================================
+          EDITOR CARD
+          ====================================================== */}
 
       <div className="rounded-2xl border border-border bg-background shadow-sm">
         <div className="p-5 sm:p-7 lg:p-8">
